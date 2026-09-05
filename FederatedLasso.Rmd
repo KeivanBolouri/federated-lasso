@@ -85,7 +85,32 @@ $\|\boldsymbol{\beta}_{t+1} - \boldsymbol{\beta}_t\|_2 < 10^{-5}$.
 > Node 3 = 160 samples, weight 0.20), we load the CSVs and then **re-label** so
 > that the largest dataset carries the largest weight.
 
+```{r load-data, echo=FALSE, message=FALSE, warning=FALSE}
+BASE <- "."
 
+load_csv_node <- function(n, base = BASE) {
+  list(
+    X_tr  = as.matrix(
+               read.csv(file.path(base, paste0("node", n, "_X_train.csv")))),
+    y_tr  = as.numeric(unlist(
+               read.csv(file.path(base, paste0("node", n, "_y_train.csv"))))),
+    X_val = as.matrix(
+               read.csv(file.path(base, paste0("node", n, "_X_val.csv")))),
+    y_val = as.numeric(unlist(
+               read.csv(file.path(base, paste0("node", n, "_y_val.csv")))))
+  )
+}
+
+raw1 <- load_csv_node(1)   # 160 train / 40  val
+raw2 <- load_csv_node(2)   # 240 train / 60  val
+raw3 <- load_csv_node(3)   # 400 train / 100 val
+
+# Re-label to match the project specification:
+# Node 1 = 400 samples (weight 0.50), Node 2 = 240 (0.30), Node 3 = 160 (0.20)
+node1 <- raw3
+node2 <- raw2
+node3 <- raw1
+```
 
 ```{r node-summary-table, echo=FALSE, results='asis', message=FALSE, warning=FALSE}
 library(knitr)
