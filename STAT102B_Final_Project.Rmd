@@ -1,0 +1,792 @@
+---
+title: "Stat 102 B -- Spring 2026 -- Final Project"
+author: "Keivan Bolouri -- Student ID: 806338280"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+colorlinks: true
+linkcolor: blue
+urlcolor: blue
+citecolor: blue
+toccolor: blue
+output:
+  pdf_document:
+    latex_engine: xelatex
+    toc: true
+    toc_depth: 4
+  word_document:
+    toc: true
+    toc_depth: '4'
+  html_document:
+    toc: true
+    toc_depth: '4'
+    df_print: paged
+header-includes:
+- \usepackage{amsmath}
+- \usepackage{amssymb}
+- \usepackage[margin=1in]{geometry}
+- \usepackage{xcolor}
+- \usepackage{tocloft}
+- \renewcommand{\cfttoctitlefont}{\color{blue}\Large\bfseries}
+- \renewcommand{\cftsecfont}{\color{blue}}
+- \renewcommand{\cftsecpagefont}{\color{blue}}
+- \renewcommand{\cftsubsecfont}{\color{blue}}
+- \renewcommand{\cftsubsecpagefont}{\color{blue}}
+- \renewcommand{\cftdot}{\color{blue}.}
+- \usepackage{pdflscape}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo      = FALSE,
+  message   = FALSE,
+  warning   = FALSE,
+  fig.align = "center",
+  fig.width  = 10,
+  fig.height = 5
+)
+library(knitr)
+library(kableExtra)
+```
+
+---
+
+# Problem Overview
+
+Three data owners each hold a private local dataset $(X_j, y_j)$ with $p = 600$
+predictors. They collaborate to estimate **one shared** 600-dimensional Lasso
+coefficient vector $\boldsymbol{\beta}$ without sharing raw data.
+
+The roadmap specifies the following node sizes and fixed aggregation weights:
+
+| Node | Training samples | Validation samples | Weight $w_j$ |
+|------|:----------------:|:------------------:|:------------:|
+| Node 1 | 400 | 100 | 0.50 |
+| Node 2 | 240 |  60 | 0.30 |
+| Node 3 | 160 |  40 | 0.20 |
+
+The algorithm alternates between:
+
+1. **Local step** — each node $j$ runs $E$ coordinate-descent (CD) epochs of
+   Lasso, initialised from the current global consensus vector $\boldsymbol{\beta}_t$.
+2. **Aggregation step** — the central server computes
+   $\boldsymbol{\beta}_{t+1} = \sum_{j=1}^{3} w_j\,\boldsymbol{\beta}_{j,t}$.
+
+Convergence is declared when
+$\|\boldsymbol{\beta}_{t+1} - \boldsymbol{\beta}_t\|_2 < 10^{-5}$.
+
+---
+
+# Data Loading
+
+> **Note on file naming vs. roadmap node order.**  The CSV files are named
+> `node1`, `node2`, `node3`, but the actual sample sizes stored in those files
+> are (160, 240, 400) for nodes 1, 2, 3 respectively — the *reverse* of the
+> roadmap's assignment of (400, 240, 160).  To honour the roadmap specification
+> exactly (Node 1 = 400 samples, weight 0.50; Node 2 = 240 samples, weight 0.30;
+> Node 3 = 160 samples, weight 0.20), we load the CSVs and then **re-label** so
+> that the largest dataset carries the largest weight.
+
+
+
+```{r node-summary-table, echo=FALSE, results='asis', message=FALSE, warning=FALSE}
+library(knitr)
+library(kableExtra)
+
+node_summary <- data.frame(
+  Node       = paste0("Node ", 1:3),
+  Weight     = c(0.50, 0.30, 0.20),
+  Train      = c(nrow(node1$X_tr), nrow(node2$X_tr), nrow(node3$X_tr)),
+  Val        = c(nrow(node1$X_val), nrow(node2$X_val), nrow(node3$X_val)),
+  Predictors = c(ncol(node1$X_tr), ncol(node2$X_tr), ncol(node3$X_tr))
+)
+
+kable(
+  node_summary,
+  format    = "latex",
+  col.names = c(
+    "Node",
+    "Weight ($w_j$)",
+    "Train rows",
+    "Val rows",
+    "Predictors ($p$)"
+  ),
+  align    = c("l", "c", "c", "c", "c"),
+  caption  = "Dataset dimensions.",
+  booktabs = TRUE,
+  escape   = FALSE
+) |>
+  kable_styling(
+    latex_options = c("striped", "hold_position"),
+    full_width = FALSE
+  )
+```
+
+
+---
+
+# Core Functions
+
+## Soft-Threshold Operator
+
+The element-wise soft-threshold (proximal operator for the $\ell_1$ penalty):
+
+$$\text{soft}(\rho,\,\lambda) = \operatorname{sign}(\rho)\,\max(|\rho|-\lambda,\;0)$$
+
+```{r soft-threshold, echo=FALSE}
+soft_thresh <- function(rho, lambda) sign(rho) * pmax(abs(rho) - lambda, 0)
+```
+
+## One Coordinate-Descent Epoch
+
+For the local Lasso objective
+$$\mathcal{L}_j(\boldsymbol{\beta}) =
+  \frac{1}{2m_j}\|y_j - X_j\boldsymbol{\beta}\|_2^2
+  + \lambda_j\|\boldsymbol{\beta}\|_1,$$
+one epoch is one full sequential pass over all $p = 600$ coordinates.
+
+**Update rule for coordinate $k$** (roadmap notation):
+$$r_k = y_j - X_j\boldsymbol{\beta} + x_{jk}\beta_k,\quad
+  \rho_k = x_{jk}^\top r_k,\quad
+  z_k = \|x_{jk}\|_2^2,\quad
+  \beta_k \;\leftarrow\; \frac{\operatorname{soft}(\rho_k,\;\lambda_j)}{z_k}.$$
+
+> **Implementation note.** The roadmap writes $\operatorname{soft}(\rho_k,\lambda_j)$
+> where $\lambda_j$ is defined on the *normalised* objective scale
+> $\frac{1}{2m_j}\|\cdot\|^2$.  Because I define $\lambda_j$ on the normalised
+> objective scale, the equivalent coordinate update using the unnormalised residual
+> $r_k = y_j - X_j\boldsymbol{\beta} + x_{jk}\beta_k$ uses the threshold
+> $\lambda_j m_j$.  Thus the reported $\lambda$ values should be interpreted
+> under the normalised-objective convention; the code uses $\lambda_j m_j$
+> so that the residual need not be rescaled inside the inner loop.
+
+```{r cd-epoch, echo=FALSE}
+cd_epoch <- function(beta, X, y, lam) {
+  m <- nrow(X)
+  p <- ncol(X)
+  z <- colSums(X^2)
+  r <- drop(y - X %*% beta)
+
+  for (k in seq_len(p)) {
+    r       <- r + X[, k] * beta[k]
+    rho_k   <- as.numeric(crossprod(X[, k], r))
+    beta[k] <- if (z[k] > 0) soft_thresh(rho_k, lam * m) / z[k] else 0
+    r       <- r - X[, k] * beta[k]
+  }
+  beta
+}
+```
+
+## Node Update Function
+
+```{r node-update, echo=FALSE}
+node_update <- function(node, beta_init, lam, E) {
+  b <- beta_init
+  for (e in seq_len(E)) {
+    b <- cd_epoch(b, node$X_tr, node$y_tr, lam)
+  }
+  b
+}
+
+node_loss_report <- function(node, beta, lam) {
+  node_train_loss(beta, node$X_tr, node$y_tr, lam)
+}
+```
+
+## Loss Functions
+
+```{r loss-functions, echo=FALSE}
+node_train_loss <- function(beta, X, y, lam) {
+  m     <- nrow(X)
+  resid <- drop(y - X %*% beta)
+  0.5 / m * sum(resid^2) + lam * sum(abs(beta))
+}
+
+# Validation loss = 0.5 * MSE (no penalty) — used for lambda selection only
+node_val_loss <- function(beta, X_val, y_val) {
+  resid <- drop(y_val - X_val %*% beta)
+  0.5 * mean(resid^2)
+}
+```
+
+## Lambda Tuning (Local, Per-Node)
+
+Each node independently searches a log-scale grid and selects the $\lambda_j$
+that minimises its own *validation* loss.  The selected $\lambda_j$ is
+**frozen** for all communication rounds.
+
+```{r tune-lambda, echo=FALSE}
+LAM_GRID <- exp(seq(log(1), log(1e-4), length.out = 30))
+
+tune_lambda <- function(node, lam_grid, max_iter = 300, tol = 1e-7) {
+  best_lam  <- NA_real_
+  best_loss <- Inf
+
+  for (lam in lam_grid) {
+    beta <- numeric(ncol(node$X_tr))
+    for (iter in seq_len(max_iter)) {
+      beta_old <- beta
+      beta     <- cd_epoch(beta, node$X_tr, node$y_tr, lam)
+      if (sqrt(sum((beta - beta_old)^2)) < tol) break
+    }
+    vl <- node_val_loss(beta, node$X_val, node$y_val)
+    if (vl < best_loss) { best_loss <- vl; best_lam <- lam }
+  }
+  list(lambda = best_lam, val_loss = best_loss)
+}
+```
+
+---
+
+# Step 1 — Tune $\lambda_j$ at Each Node {#sec-tune}
+
+```{r tune-all, echo=FALSE, cache=TRUE}
+set.seed(42)
+tune1 <- tune_lambda(node1, LAM_GRID)
+tune2 <- tune_lambda(node2, LAM_GRID)
+tune3 <- tune_lambda(node3, LAM_GRID)
+
+lam1 <- tune1$lambda
+lam2 <- tune2$lambda
+lam3 <- tune3$lambda
+
+lam_table <- data.frame(
+  Node    = paste0("Node ", 1:3),
+  Train_n = c(nrow(node1$X_tr), nrow(node2$X_tr), nrow(node3$X_tr)),
+  Val_n   = c(nrow(node1$X_val), nrow(node2$X_val), nrow(node3$X_val)),
+  Weight  = c(0.50, 0.30, 0.20),
+  Lambda  = round(c(lam1, lam2, lam3), 6),
+  Val_MSE = round(c(tune1$val_loss, tune2$val_loss, tune3$val_loss), 4)
+)
+
+kable(lam_table,
+      col.names = c("Node", "Train $n$", "Val $n$", "Weight $w_j$",
+                    "Optimal $\\lambda_j$", "Val. Loss (0.5$\\times$MSE)"),
+      align     = c("l","c","c","c","c","c"),
+      caption   = "Locally selected regularisation parameters ($\\lambda$ grid search).",
+      booktabs  = TRUE) |>
+  kable_styling(latex_options = c("striped","hold_position"),
+                full_width = FALSE)
+```
+
+**Interpretation.**  
+Node 1 (largest dataset, 400 samples) and Node 3 (160 samples) select the same
+grid value, suggesting that this level of regularisation gives the best
+validation performance for both nodes.  Node 2 selects a larger $\lambda$
+(stronger shrinkage), indicating that stricter penalisation improves its
+held-out fit — possibly due to higher local noise or a sparser signal structure.
+
+---
+
+# Step 2 — Federated Training Loop {#sec-fed}
+
+## Server Loop
+
+The central server stores only $\boldsymbol{\beta}_t$, the fixed weights, and
+scalar loss diagnostics.  It calls `node_update()` to obtain local vectors.
+For computing the global loss it calls `node_loss_report()`, which encapsulates
+the node's data access — mimicking the privacy boundary where each node would
+evaluate its own scalar loss at the broadcast $\boldsymbol{\beta}_{t+1}$ and
+return **only that scalar** to the server.  In this single-machine simulation
+both functions access the node objects directly for convenience, but conceptually
+no raw $X_j$ or $y_j$ ever crosses the privacy boundary to the server.
+
+**Global loss definition.**  At round $t$, *after* aggregation, the server
+evaluates each node's training loss at the newly formed consensus vector
+$\boldsymbol{\beta}_{t+1}$ and records the weighted average:
+$$\text{GlobalLoss}(t) = \sum_{j=1}^{3} w_j\,\mathcal{L}_j\!\left(\boldsymbol{\beta}_{t+1}\right).$$
+This is the correct global loss at the aggregated model, not at the local
+pre-aggregation vectors.
+
+```{r federated-loop, echo=FALSE}
+WEIGHTS    <- c(0.50, 0.30, 0.20)
+P          <- 600
+TOL        <- 1e-5
+MAX_ROUNDS <- 3000
+
+NODES <- list(node1, node2, node3)
+LAMS  <- c(lam1, lam2, lam3)
+
+run_federated <- function(nodes, lams, weights, E,
+                          tol = TOL, max_rounds = MAX_ROUNDS) {
+  n_nodes      <- length(nodes)
+  beta         <- numeric(P)
+  loss_history <- numeric(0)
+
+  for (t in seq_len(max_rounds)) {
+    beta_old <- beta
+
+    local_betas <- lapply(seq_len(n_nodes), function(j) {
+      node_update(nodes[[j]], beta, lams[j], E)
+    })
+
+    beta <- Reduce("+", Map("*", weights, local_betas))
+
+    global_losses <- sapply(seq_len(n_nodes), function(j) {
+      node_loss_report(nodes[[j]], beta, lams[j])
+    })
+    loss_history <- c(loss_history, sum(weights * global_losses))
+
+    delta <- sqrt(sum((beta - beta_old)^2))
+    if (delta < tol) {
+      return(list(beta = beta, loss_history = loss_history, rounds = t))
+    }
+  }
+  warning(sprintf("E=%d: reached max_rounds=%d without convergence.", E, max_rounds))
+  list(beta = beta, loss_history = loss_history, rounds = max_rounds)
+}
+```
+
+## Run E = 1, 5, 10
+
+```{r run-all-E, echo=FALSE, cache=TRUE}
+results <- list()
+for (E in c(1, 5, 10)) {
+  results[[as.character(E)]] <- run_federated(NODES, LAMS, WEIGHTS, E)
+}
+```
+
+---
+
+# Step 3 — Results
+
+## Question 1 — Optimal $(\lambda_1, \lambda_2, \lambda_3)$
+
+Already reported in the lambda tuning table above.
+
+$$\lambda_1 = `r round(lam1, 4)`, \qquad
+  \lambda_2 = `r round(lam2, 4)`, \qquad
+  \lambda_3 = `r round(lam3, 4)`$$
+
+---
+
+## Question 2 — Global Training Loss Trajectory
+
+```{r plot-loss, echo=FALSE, fig.width=11, fig.height=4.5, out.width="100%"}
+library(ggplot2)
+
+loss_df <- do.call(rbind, lapply(c("1","5","10"), function(e) {
+  lh <- results[[e]]$loss_history
+  data.frame(
+    E     = factor(paste0("E = ", e), levels = c("E = 1","E = 5","E = 10")),
+    Round = seq_along(lh),
+    Loss  = lh
+  )
+}))
+
+col_pal <- c("E = 1" = "#2563EB", "E = 5" = "#16A34A", "E = 10" = "#DC2626")
+
+p_lin <- ggplot(loss_df, aes(x = Round, y = Loss, colour = E, linetype = E)) +
+  geom_line(linewidth = 1.1) +
+  scale_colour_manual(values = col_pal) +
+  scale_linetype_manual(values = c("E = 1" = "solid",
+                                   "E = 5" = "dashed",
+                                   "E = 10" = "dotdash")) +
+  labs(title    = "Global Training Loss (Linear Scale)",
+       x        = "Communication Round",
+       y        = "Weighted Training Loss",
+       colour   = "Local Epochs",
+       linetype = "Local Epochs") +
+  theme_bw(base_size = 12) +
+  theme(legend.position = "bottom",
+        plot.title = element_text(face = "bold"))
+
+p_log <- ggplot(loss_df, aes(x = Round, y = Loss, colour = E, linetype = E)) +
+  geom_line(linewidth = 1.1) +
+  scale_y_log10() +
+  scale_colour_manual(values = col_pal) +
+  scale_linetype_manual(values = c("E = 1" = "solid",
+                                   "E = 5" = "dashed",
+                                   "E = 10" = "dotdash")) +
+  labs(title    = "Global Training Loss (Log Scale)",
+       x        = "Communication Round",
+       y        = "Weighted Training Loss (log10)",
+       colour   = "Local Epochs",
+       linetype = "Local Epochs") +
+  theme_bw(base_size = 12) +
+  theme(legend.position = "bottom",
+        plot.title = element_text(face = "bold"))
+
+if (!requireNamespace("gridExtra", quietly = TRUE)) install.packages("gridExtra")
+library(gridExtra)
+grid.arrange(p_lin, p_log, ncol = 2)
+```
+
+**Figure 1.** Global weighted training loss (evaluated at the aggregated
+$\boldsymbol{\beta}_{t+1}$) across communication rounds for
+$E = 1$ (blue/solid), $E = 5$ (green/dashed), $E = 10$ (red/dot-dash).
+
+---
+
+## Question 3 — Number of Active Coefficients (E = 1)
+
+```{r active-coefs, echo=FALSE}
+EPSILON <- 1e-4
+
+beta_E1   <- results[["1"]]$beta
+active_E1 <- which(abs(beta_E1) > EPSILON)
+
+active_df <- data.frame(
+  Setting      = "Federated  E = 1",
+  Threshold    = format(EPSILON, scientific = TRUE),
+  Active       = length(active_E1),
+  Total        = P,
+  Sparsity_pct = sprintf("%.1f%%", 100 * (1 - length(active_E1) / P))
+)
+
+kable(active_df,
+      col.names = c("Model", "Threshold $\\varepsilon$",
+                    "Active coefs.", "Total $p$", "Sparsity"),
+      align     = c("l","c","c","c","c"),
+      caption   = "Number of active (non-zero) regression coefficients for E = 1.",
+      booktabs  = TRUE) |>
+  kable_styling(latex_options = c("striped","hold_position"),
+                full_width = FALSE)
+```
+
+The federated model with $E = 1$ recovers
+**`r length(active_E1)` active predictors** out of $p = 600$
+(threshold $\varepsilon = 10^{-4}$).
+
+---
+
+## Question 4 — Confusion Matrix vs. Centralized Pooled Lasso
+
+### Centralized Pooled Lasso Baseline
+
+```{r pooled-lasso, echo=FALSE, cache=TRUE}
+library(glmnet)
+
+X_pool_tr  <- rbind(node1$X_tr,  node2$X_tr,  node3$X_tr)
+y_pool_tr  <- c(node1$y_tr,  node2$y_tr,  node3$y_tr)
+X_pool_val <- rbind(node1$X_val, node2$X_val, node3$X_val)
+y_pool_val <- c(node1$y_val, node2$y_val, node3$y_val)
+
+best_lam_pool <- NA_real_
+best_vl_pool  <- Inf
+
+for (lam in LAM_GRID) {
+  fit  <- glmnet(X_pool_tr, y_pool_tr, alpha = 1, lambda = lam,
+                 intercept = FALSE, standardize = FALSE)
+  pred <- drop(predict(fit, newx = X_pool_val, s = lam))
+  vl   <- 0.5 * mean((y_pool_val - pred)^2)
+  if (vl < best_vl_pool) { best_vl_pool <- vl; best_lam_pool <- lam }
+}
+
+fit_pool    <- glmnet(X_pool_tr, y_pool_tr, alpha = 1,
+                      lambda = best_lam_pool,
+                      intercept = FALSE, standardize = FALSE)
+beta_pool   <- as.numeric(coef(fit_pool))[-1]
+active_pool <- which(abs(beta_pool) > EPSILON)
+
+pool_df <- data.frame(
+  Model      = "Centralized Pooled Lasso",
+  Lambda     = round(best_lam_pool, 6),
+  Val_Loss   = round(best_vl_pool, 4),
+  Active     = length(active_pool),
+  Total      = P
+)
+
+kable(pool_df,
+      col.names = c("Model", "Optimal $\\lambda$", "Val. Loss (0.5$\\times$MSE)",
+                    "Active coefs.", "Total $p$"),
+      align     = c("l","c","c","c","c"),
+      caption   = "Centralized pooled Lasso baseline summary.",
+      booktabs  = TRUE) |>
+  kable_styling(latex_options = c("striped","hold_position"),
+                full_width = FALSE)
+```
+
+### Confusion Matrix Utility
+
+```{r confusion-util, echo=FALSE}
+confusion_vs_ref <- function(active_fed, active_ref, p = P) {
+  af <- as.integer(active_fed)
+  ar <- as.integer(active_ref)
+  TP <- length(intersect(af, ar))
+  FP <- length(setdiff(af, ar))
+  FN <- length(setdiff(ar, af))
+  TN <- p - length(union(af, ar))
+  c(TP = TP, FP = FP, FN = FN, TN = TN)
+}
+```
+
+### Confusion Matrix for E = 1
+
+```{r cm-E1, echo=FALSE}
+cm_E1 <- confusion_vs_ref(active_E1, active_pool)
+
+prec_E1 <- cm_E1["TP"] / (cm_E1["TP"] + cm_E1["FP"])
+rec_E1  <- cm_E1["TP"] / (cm_E1["TP"] + cm_E1["FN"])
+
+cm_mat <- matrix(
+  c(cm_E1["TN"], cm_E1["FP"], cm_E1["FN"], cm_E1["TP"]),
+  nrow = 2, byrow = TRUE,
+  dimnames = list(
+    `Ground Truth (Pooled)` = c("Inactive", "Active"),
+    `Federated Prediction`  = c("Inactive", "Active")
+  )
+)
+
+kable(cm_mat,
+      caption  = "Confusion matrix for E = 1 vs. centralized pooled Lasso (ground truth).",
+      booktabs = TRUE) |>
+  kable_styling(latex_options = c("striped","hold_position"),
+                full_width = FALSE) |>
+  add_header_above(c(" " = 1, "Federated Prediction" = 2))
+
+metrics_E1 <- data.frame(
+  E         = 1L,
+  Precision = sprintf("%.1f%%", 100 * prec_E1),
+  Recall    = sprintf("%.1f%%", 100 * rec_E1),
+  TP        = cm_E1["TP"],
+  FP        = cm_E1["FP"],
+  FN        = cm_E1["FN"],
+  TN        = cm_E1["TN"]
+)
+
+kable(metrics_E1,
+      col.names = c("E", "Precision", "Recall", "TP", "FP", "FN", "TN"),
+      align     = c("c","c","c","c","c","c","c"),
+      caption   = "Precision and recall for the federated model (E = 1).",
+      booktabs  = TRUE,
+      row.names = FALSE) |>
+  kable_styling(latex_options = c("striped","hold_position"),
+                full_width = FALSE)
+```
+
+---
+
+# Sensitivity Analysis: E = 1, 5, 10
+
+## Summary Table
+
+```{r sens-table, echo=FALSE}
+sens_rows <- lapply(c("1","5","10"), function(e) {
+  r   <- results[[e]]
+  act <- which(abs(r$beta) > EPSILON)
+  cm  <- confusion_vs_ref(act, active_pool)
+  prec <- 100 * cm["TP"] / (cm["TP"] + cm["FP"])
+  rec  <- 100 * cm["TP"] / (cm["TP"] + cm["FN"])
+  data.frame(
+    E          = as.integer(e),
+    Rounds     = r$rounds,
+    Final_Loss = round(tail(r$loss_history, 1), 4),
+    n_Active   = length(act),
+    TN         = cm["TN"],
+    FP         = cm["FP"],
+    FN         = cm["FN"],
+    TP         = cm["TP"],
+    Precision  = sprintf("%.1f%%", prec),
+    Recall     = sprintf("%.1f%%", rec),
+    row.names  = NULL
+  )
+})
+
+sens_df <- do.call(rbind, sens_rows)
+rownames(sens_df) <- NULL
+
+kable(sens_df,
+      col.names = c("$E$", "Rounds", "Final Loss", "\\# Active",
+                    "TN", "FP", "FN", "TP", "Precision", "Recall"),
+      align     = c("c","c","c","c","c","c","c","c","c","c"),
+      caption   = "Sensitivity analysis: convergence and support recovery for $E = 1, 5, 10$.",
+      booktabs  = TRUE) |>
+  kable_styling(latex_options = c("striped","hold_position"),
+                full_width = FALSE)
+```
+
+## Confusion Matrix Heatmaps
+
+```{r cm-heatmaps, echo=FALSE, fig.width=7, fig.height=4, out.width="80%"}
+cm_long <- do.call(rbind, lapply(c("1","5","10"), function(e) {
+  r   <- results[[e]]
+  act <- which(abs(r$beta) > EPSILON)
+  cm  <- confusion_vs_ref(act, active_pool)
+  data.frame(
+    Actual    = factor(c("Inactive","Inactive","Active","Active"),
+                       levels = c("Active","Inactive")),
+    Predicted = factor(c("Inactive","Active","Inactive","Active"),
+                       levels = c("Inactive","Active")),
+    Count     = c(cm["TN"], cm["FP"], cm["FN"], cm["TP"]),
+    Label     = c("TN","FP","FN","TP"),
+    Panel     = paste0("E = ", e, "  (", r$rounds, " rounds)")
+  )
+}))
+
+cm_long$Panel <- factor(cm_long$Panel, levels = unique(cm_long$Panel))
+
+ggplot(cm_long, aes(x = Predicted, y = Actual, fill = Count)) +
+  geom_tile(colour = "white", linewidth = 0.8) +
+  geom_text(aes(label = paste0(Label, "\n", Count)),
+            size = 4.5, fontface = "bold", colour = "black") +
+  scale_fill_gradient(low = "#DBEAFE", high = "#1D4ED8") +
+  facet_wrap(~Panel, ncol = 3) +
+  labs(title = "Confusion Matrices: Federated vs. Centralized Pooled Lasso",
+       x = "Federated Prediction",
+       y = "Ground Truth (Pooled Lasso)") +
+  theme_bw(base_size = 12) +
+  theme(plot.title = element_text(face = "bold"),
+        legend.position = "right")
+```
+
+**Figure 2.** Confusion matrices for $E = 1, 5, 10$ against the centralized
+pooled Lasso reference.
+
+## Overlaid Loss Curves
+
+```{r overlay-loss, echo=FALSE, fig.width=6, fig.height=4, out.width="70%"}
+conv_rounds <- sapply(c("1","5","10"), function(e) results[[e]]$rounds)
+conv_loss   <- sapply(c("1","5","10"), function(e)
+                      tail(results[[e]]$loss_history, 1))
+annot_df <- data.frame(
+  Round = conv_rounds,
+  Loss  = conv_loss,
+  Label = paste0("t = ", conv_rounds),
+  E     = factor(c("E = 1","E = 5","E = 10"),
+                 levels = c("E = 1","E = 5","E = 10"))
+)
+
+ggplot(loss_df, aes(x = Round, y = Loss, colour = E, linetype = E)) +
+  geom_line(linewidth = 1.2) +
+  geom_point(data = annot_df, aes(x = Round, y = Loss),
+             size = 3, shape = 21, fill = "white", stroke = 1.5) +
+  geom_text(data = annot_df, aes(x = Round, y = Loss, label = Label),
+            hjust = -0.18, vjust = -1.2, size = 3.6, show.legend = FALSE) +
+  scale_colour_manual(values = col_pal) +
+  scale_linetype_manual(values = c("E = 1" = "solid",
+                                   "E = 5" = "dashed",
+                                   "E = 10" = "dotdash")) +
+  labs(title    = "Overlaid Global Training Loss Trajectories (E = 1, 5, 10)",
+       subtitle = "Loss evaluated at aggregated beta after each communication round",
+       x        = "Communication Round",
+       y        = "Weighted Global Training Loss",
+       colour   = "Local Epochs",
+       linetype = "Local Epochs") +
+  theme_bw(base_size = 12) +
+  theme(legend.position = "bottom",
+        plot.title    = element_text(face = "bold"),
+        plot.subtitle = element_text(size = 10, colour = "grey40"))
+```
+
+**Figure 3.** Overlaid loss trajectories. Open circles mark the convergence
+round for each schedule.
+
+## Coefficient Profile Comparison
+
+```{r coef-profiles, echo=FALSE, fig.width=6, fig.height=4, out.width="70%"}
+prof_df <- do.call(rbind, lapply(c("1","5","10","pool"), function(tag) {
+  if (tag == "pool") {
+    b   <- beta_pool
+    lbl <- sprintf("Centralized Pooled Lasso  (%d active)", length(active_pool))
+  } else {
+    b   <- results[[tag]]$beta
+    lbl <- sprintf("Federated  E = %s  (%d active)",
+                   tag, sum(abs(b) > EPSILON))
+  }
+  nz <- which(abs(b) > EPSILON)
+  if (length(nz) == 0) return(NULL)
+  data.frame(Index = nz, Coef = b[nz], Model = lbl)
+}))
+
+prof_df$Model <- factor(prof_df$Model, levels = unique(prof_df$Model))
+
+ggplot(prof_df, aes(x = Index, y = Coef)) +
+  geom_segment(aes(xend = Index, yend = 0), linewidth = 0.45,
+               colour = "steelblue", alpha = 0.7) +
+  geom_point(size = 1.0, colour = "steelblue4") +
+  facet_wrap(~Model, ncol = 1, scales = "free_y") +
+  labs(title = "Non-Zero Coefficient Profiles",
+       x     = "Predictor Index (1 to 600)",
+       y     = "Coefficient Value") +
+  theme_bw(base_size = 11) +
+  theme(plot.title  = element_text(face = "bold"),
+        strip.text  = element_text(face = "bold", size = 10))
+```
+
+**Figure 4.** Stem plots of non-zero coefficients for each model.
+The bottom panel (pooled Lasso) is the reference support.
+
+---
+
+# Discussion
+
+## Convergence Rate
+
+```{r convergence-table, echo=FALSE}
+rounds_vec  <- sapply(c("1","5","10"), function(e) results[[e]]$rounds)
+savings_pct <- round((1 - rounds_vec / rounds_vec[1]) * 100)
+
+conv_df <- data.frame(
+  E         = c(1L, 5L, 10L),
+  Rounds    = as.integer(rounds_vec),
+  Reduction = c("baseline",
+                paste0("\u2212", savings_pct[2], "%"),
+                paste0("\u2212", savings_pct[3], "%"))
+)
+
+kable(conv_df,
+      col.names = c("$E$", "Rounds to convergence", "Reduction vs.\\ $E = 1$"),
+      align     = c("c","c","l"),
+      caption   = "Convergence speed by local epoch count.",
+      booktabs  = TRUE,
+      row.names = FALSE) |>
+  kable_styling(latex_options = c("striped","hold_position"),
+                full_width = FALSE)
+```
+
+Increasing $E$ from 1 to 10 reduces communication rounds from
+**`r results[["1"]]$rounds`** to **`r results[["10"]]$rounds`**
+(`r savings_pct[3]`% reduction).  Each round transmits a $p = 600$-dimensional
+vector per node; fewer rounds directly reduce network bandwidth cost.
+
+## Support Recovery: Precision / Recall Trade-off
+
+As $E$ increases:
+
+* **Recall decreases**: more local epochs push each node toward its own local
+  Lasso minimum, causing *node drift*.  The consensus model loses sight of
+  features that the pooled model recovers by leveraging all data jointly.
+* **Precision changes modestly**: the active set shrinks with larger $E$ but
+  still contains many false positives relative to the pooled baseline.
+* **Final global loss is non-monotone in $E$**: increasing $E$ greatly reduces
+  the number of communication rounds, but the final global loss does not decrease
+  uniformly.  In our results, $E = 5$ yields the lowest final loss, while
+  $E = 10$ converges in the fewest rounds but produces a slightly higher final
+  loss than $E = 5$.  This reflects the tension between faster convergence and
+  node drift: with $E = 10$, each node drifts further toward its local optimum
+  before the next aggregation, which can overshoot the global consensus.
+
+## Trade-off Summary
+
+| Concern | Small $E$ | Large $E$ |
+|---------|:---------:|:---------:|
+| Communication rounds | More | Fewer |
+| Support recall | Higher | Lower |
+| Per-round computation | Lighter | Heavier |
+| Final training loss | Slightly higher | Non-monotone ($E=5$ lowest) |
+| Node drift risk | Minimal | Pronounced |
+
+**Recommendation.**  $E = 5$ provides a good balance — substantially fewer
+communication rounds than $E = 1$ while still recovering a large fraction of
+the pooled model's support.  When accurate variable selection is the primary
+goal, $E = 1$ most faithfully approximates the centralized solution.
+
+---
+
+# Session Information
+
+```{r session-info, echo=FALSE}
+si <- sessionInfo()
+si_df <- data.frame(
+  Item  = c("R version", "Platform", "Running under"),
+  Value = c(si$R.version$version.string, si$platform, si$running)
+)
+
+kable(si_df,
+      col.names = c("Item", "Value"),
+      align     = c("l","l"),
+      caption   = "R session information.",
+      booktabs  = TRUE,
+      row.names = FALSE) |>
+  kable_styling(latex_options = c("striped","hold_position"),
+                full_width = FALSE)
+```

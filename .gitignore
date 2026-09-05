@@ -1,0 +1,9 @@
+*.aux
+*.log
+*.out
+*.synctex.gz
+.Rhistory
+.RData
+*_cache/
+.DS_Store
+Thumbs.db
