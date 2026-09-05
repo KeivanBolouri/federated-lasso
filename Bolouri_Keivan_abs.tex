@@ -13,12 +13,12 @@
 \enlargethispage{4\baselineskip}
 
 \begin{center}
-{\large\bfseries How Many Local Epochs? Communication Cost and Variable\\
-Selection in Federated Lasso for Multi-Site Studies}\\[0.55em]
+{\large\bfseries How Many Local Epochs? Communication Cost and\\
+Variable Selection in Federated Lasso}\\[0.55em]
 Keivan Bolouri\\[0.15em]
 {\footnotesize Department of Statistics, University of California, Irvine
 \quad\textbullet\quad
-\texttt{keivan.bolouri.78@gmail.com}}
+\texttt{kbolouri@uci.edu}}
 \end{center}
 
 \vspace{0.15em}
@@ -26,7 +26,7 @@ Keivan Bolouri\\[0.15em]
 \noindent\textbf{Problem.}
 Multi-site pharmaceutical research increasingly depends on data that cannot be centralized ---
 records behind institutional firewalls, trials under separate data-use agreements, claims databases no single
-sponsor controls. Federated learning shares model parameters rather than patient records. When the goal is
+sponsor controls. Federated learning shares model parameters, not patient records. When the goal is
 \textit{which variables matter} --- candidate biomarkers, covariates for a safety model --- the natural tool is a sparse
 regression such as the Lasso. Every federated protocol must choose $E$, the number of local update steps
 each site takes between aggregation rounds; larger $E$ buys fewer communication rounds but risks client
@@ -35,17 +35,18 @@ by soft-thresholding, drift can lead sites to prune different predictors --- the
 variable list, not merely a worse fit.
 
 \noindent\textbf{Setup.}
-We evaluate a synchronous federated coordinate-descent Lasso using the publicly available
-STAT~102B high-dimensional regression dataset obtained from
-\texttt{github.com/KeivanBolouri/federated-lasso}.
-After preprocessing, the data contain $n=800$ observations and $p=600$ predictors and are
-computationally partitioned into $K=3$ disjoint sites with sample sizes $m_j=400,240,160$.
-Each site selects its regularization parameter independently. Because the true coefficient support is
-unknown, a centralized Lasso fitted to the pooled sample serves as the reference throughout.
-Each site then runs $E$ full coordinate-descent passes per round, and the server aggregates by
-sample-size weight; no row-level data are exchanged during federated fitting. We sweep $E\in\{1,2,3,5,8,10,15,20\}$,
-recording communication rounds, upload cost, and agreement between the federated active set and
-that reference (197 active predictors).
+We evaluate a synchronous federated coordinate-descent Lasso on a high-dimensional continuous-response
+regression dataset whose data-generating process and true coefficient vector were not disclosed to the
+analyst, so a centralized Lasso on the pooled sample serves as the reference rather than a known support
+(data and code: \texttt{github.com/KeivanBolouri/federated-lasso}).
+The training sample ($n = 800$, $p = 600$) is partitioned into $K = 3$ disjoint sites with
+$m_j = 400, 240, 160$, so variation across sites arises from the partition rather than from distinct data
+sources. Each site selects its penalty on its own validation split from a 30-point log-scale grid; the pooled
+reference is fitted with the same grid and criterion on the pooled validation split, so both sides of the
+comparison are tuned by the same rule. Each site then runs $E$ full coordinate-descent passes per round
+and the server aggregates by sample-size weight; no row-level data are exchanged during federated fitting.
+We sweep $E\in\{1, 2, 3, 5, 8, 10, 15, 20\}$, recording rounds, upload cost, and agreement between the
+federated active set and that reference (197 active predictors).
 
 \noindent\textbf{Results.}
 Recall against the reference falls monotonically from 86.3\% to 69.5\% as $E$ grows from 1 to 20,
@@ -65,18 +66,17 @@ a materially different candidate list.
 \end{center}
 
 \noindent\textbf{Implication.}
-A preliminary coarse grid $\{1,5,10\}$ favored $E=5$ on final penalized objective (25.8165
-against 25.8906 at $E=1$), missing the $E=2$--$3$ region entirely. The objective and the selection metrics
-disagreed about which schedule was best, suggesting that the penalized objective alone may be insufficient
-for choosing $E$ when support stability is important.
+A preliminary coarse grid $\{1, 5, 10\}$ favored $E=5$ on final penalized objective (25.8165
+against 25.8906 at $E=1$), missing the $E=2$--$3$ region entirely. Objective and selection metrics disagreed
+about which schedule was best, suggesting the penalized objective alone may be insufficient for choosing $E$
+when support stability matters.
 
 \noindent\textbf{Limitations.}
 Results come from a single draw of one dataset with no error bars, so the $E=1$ versus
 $E=3$ gap is not separated from sampling noise, and the data are not multi-site clinical data --- the framing
-above is motivation, not demonstrated performance. Because the true support is unknown, the pooled
-Lasso is an estimated reference and the metrics measure agreement rather than correctness. The recall
-pattern is consistent with client drift, though drift was not measured directly, and no comparison is made
-against FedProx, SCAFFOLD, or ADMM-based distributed Lasso --- replication with known true support,
-direct drift measurement, and those comparisons are in progress.
+above is motivation, not demonstrated performance. With the true support unknown, the metrics measure
+agreement with an estimated reference, not correctness. The recall pattern is consistent with client drift,
+though drift was not measured directly, and no baseline comparison (FedProx, SCAFFOLD, ADMM) is
+included; replication and those comparisons are in progress.
 
 \end{document}
