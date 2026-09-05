@@ -360,11 +360,15 @@ run_federated <- function(nodes, lams, weights, E,
 }
 ```
 
-## Run E = 1, 5, 10
+## Run \(E \in \{1, 2, 3, 5, 8, 10, 15, 20\}\)
 
 ```{r run-all-E, echo=FALSE, cache=TRUE}
+E_VALUES <- c(1, 2, 3, 5, 8, 10, 15, 20)
+e_chars  <- as.character(E_VALUES)
+e_labels <- paste0("E = ", E_VALUES)
+
 results <- list()
-for (E in c(1, 5, 10)) {
+for (E in E_VALUES) {
   results[[as.character(E)]] <- run_federated(NODES, LAMS, WEIGHTS, E)
 }
 ```
@@ -388,23 +392,28 @@ $$\lambda_1 = `r round(lam1, 4)`, \qquad
 ```{r plot-loss, echo=FALSE, fig.width=11, fig.height=4.5, out.width="100%"}
 library(ggplot2)
 
-loss_df <- do.call(rbind, lapply(c("1","5","10"), function(e) {
+loss_df <- do.call(rbind, lapply(e_chars, function(e) {
   lh <- results[[e]]$loss_history
   data.frame(
-    E     = factor(paste0("E = ", e), levels = c("E = 1","E = 5","E = 10")),
+    E     = factor(paste0("E = ", e), levels = e_labels),
     Round = seq_along(lh),
     Loss  = lh
   )
 }))
 
-col_pal <- c("E = 1" = "#2563EB", "E = 5" = "#16A34A", "E = 10" = "#DC2626")
+col_pal <- setNames(
+  colorRampPalette(c("#1D4ED8", "#16A34A", "#DC2626"))(length(E_VALUES)),
+  e_labels
+)
+lty_map <- setNames(
+  c("solid", "solid", "solid", "dashed", "dashed", "dashed", "dotted", "dotted"),
+  e_labels
+)
 
 p_lin <- ggplot(loss_df, aes(x = Round, y = Loss, colour = E, linetype = E)) +
   geom_line(linewidth = 1.1) +
   scale_colour_manual(values = col_pal) +
-  scale_linetype_manual(values = c("E = 1" = "solid",
-                                   "E = 5" = "dashed",
-                                   "E = 10" = "dotdash")) +
+  scale_linetype_manual(values = lty_map) +
   labs(title    = "Global Training Loss (Linear Scale)",
        x        = "Communication Round",
        y        = "Weighted Training Loss",
@@ -418,9 +427,7 @@ p_log <- ggplot(loss_df, aes(x = Round, y = Loss, colour = E, linetype = E)) +
   geom_line(linewidth = 1.1) +
   scale_y_log10() +
   scale_colour_manual(values = col_pal) +
-  scale_linetype_manual(values = c("E = 1" = "solid",
-                                   "E = 5" = "dashed",
-                                   "E = 10" = "dotdash")) +
+  scale_linetype_manual(values = lty_map) +
   labs(title    = "Global Training Loss (Log Scale)",
        x        = "Communication Round",
        y        = "Weighted Training Loss (log10)",
@@ -437,7 +444,7 @@ grid.arrange(p_lin, p_log, ncol = 2)
 
 **Figure 1.** Global weighted training loss (evaluated at the aggregated
 $\boldsymbol{\beta}_{t+1}$) across communication rounds for
-$E = 1$ (blue/solid), $E = 5$ (green/dashed), $E = 10$ (red/dot-dash).
+$E \in \{1, 2, 3, 5, 8, 10, 15, 20\}$.
 
 ---
 
@@ -580,28 +587,42 @@ kable(metrics_E1,
 
 ---
 
-# Sensitivity Analysis: E = 1, 5, 10
+# Sensitivity Analysis: \(E \in \{1, 2, 3, 5, 8, 10, 15, 20\}\)
 
 ## Summary Table
 
 ```{r sens-table, echo=FALSE}
-sens_rows <- lapply(c("1","5","10"), function(e) {
-  r   <- results[[e]]
-  act <- which(abs(r$beta) > EPSILON)
-  cm  <- confusion_vs_ref(act, active_pool)
-  prec <- 100 * cm["TP"] / (cm["TP"] + cm["FP"])
-  rec  <- 100 * cm["TP"] / (cm["TP"] + cm["FN"])
+safe_div <- function(num, den) if (den > 0) num / den else NA_real_
+
+sens_rows <- lapply(e_chars, function(e) {
+  r    <- results[[e]]
+  act  <- which(abs(r$beta) > EPSILON)
+  cm   <- confusion_vs_ref(act, active_pool)
+  tp   <- as.integer(cm["TP"]); fp <- as.integer(cm["FP"])
+  fn   <- as.integer(cm["FN"]); tn <- as.integer(cm["TN"])
+  prec <- safe_div(tp, tp + fp)
+  rec  <- safe_div(tp, tp + fn)
+  f1   <- safe_div(2 * tp, 2 * tp + fp + fn)
+  jacc <- safe_div(tp, tp + fp + fn)
+  rnd  <- as.integer(r$rounds)
   data.frame(
     E          = as.integer(e),
-    Rounds     = r$rounds,
+    Rounds     = rnd,
     Final_Loss = round(tail(r$loss_history, 1), 4),
     n_Active   = length(act),
-    TN         = cm["TN"],
-    FP         = cm["FP"],
-    FN         = cm["FN"],
-    TP         = cm["TP"],
-    Precision  = sprintf("%.1f%%", prec),
-    Recall     = sprintf("%.1f%%", rec),
+    TN         = tn,
+    FP         = fp,
+    FN         = fn,
+    TP         = tp,
+    Precision  = sprintf("%.1f%%", 100 * prec),
+    Recall     = sprintf("%.1f%%", 100 * rec),
+    F1         = sprintf("%.3f", f1),
+    Jaccard    = sprintf("%.3f", jacc),
+    KiB        = round(rnd * 3 * 600 * 8 / 1024, 1),
+    Prec_num   = prec,
+    Rec_num    = rec,
+    F1_num     = f1,
+    Jacc_num   = jacc,
     row.names  = NULL
   )
 })
@@ -609,20 +630,22 @@ sens_rows <- lapply(c("1","5","10"), function(e) {
 sens_df <- do.call(rbind, sens_rows)
 rownames(sens_df) <- NULL
 
-kable(sens_df,
+kable(sens_df[, c("E","Rounds","Final_Loss","n_Active",
+                  "TN","FP","FN","TP","Precision","Recall","F1","Jaccard","KiB")],
       col.names = c("$E$", "Rounds", "Final Loss", "\\# Active",
-                    "TN", "FP", "FN", "TP", "Precision", "Recall"),
-      align     = c("c","c","c","c","c","c","c","c","c","c"),
-      caption   = "Sensitivity analysis: convergence and support recovery for $E = 1, 5, 10$.",
+                    "TN", "FP", "FN", "TP", "Precision", "Recall",
+                    "F1", "Jaccard", "Upload (KiB)"),
+      align     = c("c","c","c","c","c","c","c","c","c","c","c","c","c"),
+      caption   = "Sensitivity analysis across $E \\in \\{1,2,3,5,8,10,15,20\\}$. Precision, recall, F1, and Jaccard measure agreement with the pooled Lasso reference. Upload is client-to-server only (rounds $\\times$ 3 nodes $\\times$ 600 coefficients $\\times$ 8 bytes / 1024).",
       booktabs  = TRUE) |>
-  kable_styling(latex_options = c("striped","hold_position"),
+  kable_styling(latex_options = c("striped","hold_position","scale_down"),
                 full_width = FALSE)
 ```
 
 ## Confusion Matrix Heatmaps
 
-```{r cm-heatmaps, echo=FALSE, fig.width=7, fig.height=4, out.width="80%"}
-cm_long <- do.call(rbind, lapply(c("1","5","10"), function(e) {
+```{r cm-heatmaps, echo=FALSE, fig.width=10, fig.height=6.5, out.width="100%"}
+cm_long <- do.call(rbind, lapply(e_chars, function(e) {
   r   <- results[[e]]
   act <- which(abs(r$beta) > EPSILON)
   cm  <- confusion_vs_ref(act, active_pool)
@@ -642,46 +665,41 @@ cm_long$Panel <- factor(cm_long$Panel, levels = unique(cm_long$Panel))
 ggplot(cm_long, aes(x = Predicted, y = Actual, fill = Count)) +
   geom_tile(colour = "white", linewidth = 0.8) +
   geom_text(aes(label = paste0(Label, "\n", Count)),
-            size = 4.5, fontface = "bold", colour = "black") +
+            size = 3.4, fontface = "bold", colour = "black") +
   scale_fill_gradient(low = "#DBEAFE", high = "#1D4ED8") +
-  facet_wrap(~Panel, ncol = 3) +
+  facet_wrap(~Panel, ncol = 4) +
   labs(title = "Confusion Matrices: Federated vs. Centralized Pooled Lasso",
        x = "Federated Prediction",
        y = "Ground Truth (Pooled Lasso)") +
-  theme_bw(base_size = 12) +
+  theme_bw(base_size = 11) +
   theme(plot.title = element_text(face = "bold"),
         legend.position = "right")
 ```
 
-**Figure 2.** Confusion matrices for $E = 1, 5, 10$ against the centralized
+**Figure 2.** Confusion matrices for $E \in \{1, 2, 3, 5, 8, 10, 15, 20\}$ against the centralized
 pooled Lasso reference.
 
 ## Overlaid Loss Curves
 
-```{r overlay-loss, echo=FALSE, fig.width=6, fig.height=4, out.width="70%"}
-conv_rounds <- sapply(c("1","5","10"), function(e) results[[e]]$rounds)
-conv_loss   <- sapply(c("1","5","10"), function(e)
+```{r overlay-loss, echo=FALSE, fig.width=7, fig.height=4.5, out.width="80%"}
+conv_rounds <- sapply(e_chars, function(e) results[[e]]$rounds)
+conv_loss   <- sapply(e_chars, function(e)
                       tail(results[[e]]$loss_history, 1))
 annot_df <- data.frame(
-  Round = conv_rounds,
-  Loss  = conv_loss,
+  Round = unname(conv_rounds),
+  Loss  = unname(conv_loss),
   Label = paste0("t = ", conv_rounds),
-  E     = factor(c("E = 1","E = 5","E = 10"),
-                 levels = c("E = 1","E = 5","E = 10"))
+  E     = factor(e_labels, levels = e_labels)
 )
 
 ggplot(loss_df, aes(x = Round, y = Loss, colour = E, linetype = E)) +
-  geom_line(linewidth = 1.2) +
+  geom_line(linewidth = 1.1) +
   geom_point(data = annot_df, aes(x = Round, y = Loss),
-             size = 3, shape = 21, fill = "white", stroke = 1.5) +
-  geom_text(data = annot_df, aes(x = Round, y = Loss, label = Label),
-            hjust = -0.18, vjust = -1.2, size = 3.6, show.legend = FALSE) +
+             size = 2.6, shape = 21, fill = "white", stroke = 1.2) +
   scale_colour_manual(values = col_pal) +
-  scale_linetype_manual(values = c("E = 1" = "solid",
-                                   "E = 5" = "dashed",
-                                   "E = 10" = "dotdash")) +
-  labs(title    = "Overlaid Global Training Loss Trajectories (E = 1, 5, 10)",
-       subtitle = "Loss evaluated at aggregated beta after each communication round",
+  scale_linetype_manual(values = lty_map) +
+  labs(title    = "Overlaid Global Training Loss Trajectories",
+       subtitle = "All E in {1, 2, 3, 5, 8, 10, 15, 20}; open circles mark convergence",
        x        = "Communication Round",
        y        = "Weighted Global Training Loss",
        colour   = "Local Epochs",
@@ -695,10 +713,47 @@ ggplot(loss_df, aes(x = Round, y = Loss, colour = E, linetype = E)) +
 **Figure 3.** Overlaid loss trajectories. Open circles mark the convergence
 round for each schedule.
 
+## Recall, precision, and communication--agreement trade-off
+
+```{r abstract-metrics-plots, echo=FALSE, fig.width=10, fig.height=4.2, out.width="100%"}
+metric_long <- rbind(
+  data.frame(E = sens_df$E, Metric = "Recall",    Value = 100 * sens_df$Rec_num),
+  data.frame(E = sens_df$E, Metric = "Precision", Value = 100 * sens_df$Prec_num)
+)
+metric_long$Metric <- factor(metric_long$Metric, levels = c("Recall", "Precision"))
+
+p_rp <- ggplot(metric_long, aes(x = factor(E), y = Value, colour = Metric,
+                                group = Metric, linetype = Metric)) +
+  geom_line(linewidth = 0.9) +
+  geom_point(size = 2.2) +
+  scale_colour_manual(values = c("Recall" = "#1D4ED8", "Precision" = "#6B7280")) +
+  scale_linetype_manual(values = c("Recall" = "solid", "Precision" = "dashed")) +
+  labs(title = "(a) Recall falls; precision flat",
+       x = "Local epochs E", y = "Percent") +
+  theme_bw(base_size = 11) +
+  theme(legend.position = "bottom",
+        plot.title = element_text(face = "bold", size = 11))
+
+p_f1 <- ggplot(sens_df, aes(x = KiB, y = F1_num)) +
+  geom_line(colour = "#185FA5", linewidth = 0.8) +
+  geom_point(size = 2.4, colour = "#185FA5") +
+  geom_text(aes(label = E), vjust = -0.8, size = 3) +
+  labs(title = "(b) F1 vs. upload cost, labelled by E",
+       x = "Upload cost (KiB)", y = "F1 vs. pooled support") +
+  theme_bw(base_size = 11) +
+  theme(plot.title = element_text(face = "bold", size = 11))
+
+grid.arrange(p_rp, p_f1, ncol = 2)
+```
+
+**Figure 4.** Support-agreement metrics matching the abstract: recall declines
+monotonically in $E$ while precision is comparatively flat (a), so F1 peaks in
+the interior rather than at $E = 1$ (b).
+
 ## Coefficient Profile Comparison
 
-```{r coef-profiles, echo=FALSE, fig.width=6, fig.height=4, out.width="70%"}
-prof_df <- do.call(rbind, lapply(c("1","5","10","pool"), function(tag) {
+```{r coef-profiles, echo=FALSE, fig.width=6, fig.height=6, out.width="70%"}
+prof_df <- do.call(rbind, lapply(c("1","3","10","pool"), function(tag) {
   if (tag == "pool") {
     b   <- beta_pool
     lbl <- sprintf("Centralized Pooled Lasso  (%d active)", length(active_pool))
@@ -727,8 +782,9 @@ ggplot(prof_df, aes(x = Index, y = Coef)) +
         strip.text  = element_text(face = "bold", size = 10))
 ```
 
-**Figure 4.** Stem plots of non-zero coefficients for each model.
-The bottom panel (pooled Lasso) is the reference support.
+**Figure 5.** Stem plots of non-zero coefficients for $E = 1$ (highest recall),
+$E = 3$ (peak F1/Jaccard in the abstract), $E = 10$, and the pooled Lasso
+reference.
 
 ---
 
@@ -737,15 +793,14 @@ The bottom panel (pooled Lasso) is the reference support.
 ## Convergence Rate
 
 ```{r convergence-table, echo=FALSE}
-rounds_vec  <- sapply(c("1","5","10"), function(e) results[[e]]$rounds)
+rounds_vec  <- sapply(e_chars, function(e) results[[e]]$rounds)
 savings_pct <- round((1 - rounds_vec / rounds_vec[1]) * 100)
 
 conv_df <- data.frame(
-  E         = c(1L, 5L, 10L),
+  E         = E_VALUES,
   Rounds    = as.integer(rounds_vec),
-  Reduction = c("baseline",
-                paste0("\u2212", savings_pct[2], "%"),
-                paste0("\u2212", savings_pct[3], "%"))
+  Reduction = ifelse(E_VALUES == 1, "baseline",
+                     paste0("\u2212", savings_pct, "%"))
 )
 
 kable(conv_df,
@@ -758,42 +813,48 @@ kable(conv_df,
                 full_width = FALSE)
 ```
 
-Increasing $E$ from 1 to 10 reduces communication rounds from
-**`r results[["1"]]$rounds`** to **`r results[["10"]]$rounds`**
-(`r savings_pct[3]`% reduction).  Each round transmits a $p = 600$-dimensional
-vector per node; fewer rounds directly reduce network bandwidth cost.
+Increasing $E$ from 1 to 20 reduces communication rounds from
+**`r results[["1"]]$rounds`** to **`r results[["20"]]$rounds`**
+(`r savings_pct[length(savings_pct)]`% reduction).  Each round transmits a
+$p = 600$-dimensional vector per node; fewer rounds directly reduce network
+bandwidth cost.  The $E = 1 \to 3$ step alone cuts rounds from
+`r results[["1"]]$rounds` to `r results[["3"]]$rounds` and upload from
+`r sens_df$KiB[sens_df$E==1]`~KiB to `r sens_df$KiB[sens_df$E==3]`~KiB.
 
 ## Support Recovery: Precision / Recall Trade-off
 
 As $E$ increases:
 
-* **Recall decreases**: more local epochs push each node toward its own local
-  Lasso minimum, causing *node drift*.  The consensus model loses sight of
-  features that the pooled model recovers by leveraging all data jointly.
-* **Precision changes modestly**: the active set shrinks with larger $E$ but
-  still contains many false positives relative to the pooled baseline.
-* **Final global loss is non-monotone in $E$**: increasing $E$ greatly reduces
-  the number of communication rounds, but the final global loss does not decrease
-  uniformly.  In our results, $E = 5$ yields the lowest final loss, while
-  $E = 10$ converges in the fewest rounds but produces a slightly higher final
-  loss than $E = 5$.  This reflects the tension between faster convergence and
-  node drift: with $E = 10$, each node drifts further toward its local optimum
-  before the next aggregation, which can overshoot the global consensus.
+* **Recall decreases monotonically**: more local epochs push each node toward
+  its own local Lasso minimum, causing *node drift*.  Recall falls from
+  `r sens_df$Recall[sens_df$E==1]` at $E = 1$ to
+  `r sens_df$Recall[sens_df$E==20]` at $E = 20$.
+* **Precision stays comparatively flat**
+  (`r sprintf("%.1f%%", 100 * min(sens_df$Prec_num))`--`r sprintf("%.1f%%", 100 * max(sens_df$Prec_num))`).
+* **F1 and Jaccard are not monotone**: both peak at
+  $E = `r sens_df$E[which.max(sens_df$F1_num)]`$
+  (F1 `r sens_df$F1[which.max(sens_df$F1_num)]`,
+  Jaccard `r sens_df$Jaccard[which.max(sens_df$Jacc_num)]`),
+  above their values at $E = 1$
+  (F1 `r sens_df$F1[sens_df$E==1]`, Jaccard `r sens_df$Jaccard[sens_df$E==1]`).
+* **Final global loss is non-monotone in $E$**: a coarse grid $\{1, 5, 10\}$ can
+  pick a schedule by penalized objective while missing the interior $E = 2$--$3$
+  region where support agreement is highest.
 
 ## Trade-off Summary
 
-| Concern | Small $E$ | Large $E$ |
-|---------|:---------:|:---------:|
-| Communication rounds | More | Fewer |
-| Support recall | Higher | Lower |
-| Per-round computation | Lighter | Heavier |
-| Final training loss | Slightly higher | Non-monotone ($E=5$ lowest) |
-| Node drift risk | Minimal | Pronounced |
+| Concern | Small $E$ | Interior ($E \approx 3$) | Large $E$ |
+|---------|:---------:|:-----------------------:|:---------:|
+| Communication rounds | More | Fewer than $E=1$ | Fewest |
+| Support recall | Highest | Slightly lower | Lowest |
+| F1 / Jaccard | High | Peak | Lower |
+| Node drift risk | Minimal | Moderate | Pronounced |
 
-**Recommendation.**  $E = 5$ provides a good balance — substantially fewer
-communication rounds than $E = 1$ while still recovering a large fraction of
-the pooled model's support.  When accurate variable selection is the primary
-goal, $E = 1$ most faithfully approximates the centralized solution.
+**Recommendation.**  $E = 3$ is the schedule that jointly improves agreement
+with the pooled support and cuts communication relative to $E = 1$ in this run.
+$E = 1$ remains the most faithful match if recall against the pooled list is
+the sole goal.  A preliminary grid $\{1, 5, 10\}$ is too coarse: it can miss
+the $E = 2$--$3$ region entirely.
 
 ---
 
