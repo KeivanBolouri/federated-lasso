@@ -43,7 +43,7 @@ computationally partitioned into $K=3$ disjoint sites with sample sizes $m_j=400
 Each site selects its regularization parameter independently. Because the true coefficient support is
 unknown, a centralized Lasso fitted to the pooled sample serves as the reference throughout.
 Each site then runs $E$ full coordinate-descent passes per round, and the server aggregates by
-sample-size weight; raw data never leaves a site. We sweep $E\in\{1,2,3,5,8,10,15,20\}$,
+sample-size weight; no row-level data are exchanged during federated fitting. We sweep $E\in\{1,2,3,5,8,10,15,20\}$,
 recording communication rounds, upload cost, and agreement between the federated active set and
 that reference (197 active predictors).
 
