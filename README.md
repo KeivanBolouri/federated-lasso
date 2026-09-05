@@ -1,23 +1,19 @@
 # How Many Local Epochs? Communication Cost and Variable Selection in Federated Lasso
 
-One-page abstract, analysis notebook, and STAT 102B node data for a synchronous federated coordinate-descent Lasso.
+One-page abstract, analysis notebook, and node-level data for a synchronous federated coordinate-descent Lasso.
 
 ## Dataset
 
-This is **not** a named public repository dataset. The files are a **high-dimensional continuous-response regression dataset provided for the STAT 102B (Spring 2026) final project**. Predictors are unlabeled (columns `0`–`599`) and look approximately standard-scale.
-
-After the course-supplied preprocessing and the given train/validation splits:
+A high-dimensional continuous-response regression sample (\(n = 800\) training observations, \(p = 600\) predictors). The data-generating process and true coefficient vector were not disclosed, so a centralized Lasso on the pooled sample is the reference support rather than a known truth. The training sample is computationally partitioned into \(K = 3\) disjoint sites with \(m_j = 400, 240, 160\); variation across sites comes from that partition, not from distinct data sources.
 
 | Partition | Train \(n\) | Validation \(n\) | Predictors \(p\) |
 |-----------|-------------|------------------|------------------|
-| Node 1 (file `node1_*`; smallest site in the raw files) | 160 | 40 | 600 |
+| Node 1 | 400 | 100 | 600 |
 | Node 2 | 240 | 60 | 600 |
-| Node 3 (largest site in the raw files) | 400 | 100 | 600 |
-| **Pooled training** | **800** | **200** | **600** |
+| Node 3 | 160 | 40 | 600 |
+| **Pooled** | **800** | **200** | **600** |
 
-The abstract and the course specification label sites by sample size as \(m_j = 400, 240, 160\) (computationally partitioned into \(K=3\) disjoint sites). The analysis notebook re-labels the CSVs so the largest file is Node 1 with weight 0.50.
-
-Because the true coefficient support is unknown, a centralized Lasso on the pooled sample is the reference.
+The CSV files are named `node1`, `node2`, `node3` in reverse size order (160, 240, 400). The notebook re-labels them so Node 1 is the largest site (weight 0.50). Each site selects its penalty on its own validation split; no row-level data are exchanged during federated fitting.
 
 ## Files
 
