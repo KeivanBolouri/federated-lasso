@@ -22,7 +22,7 @@ Because the true coefficient support is unknown, a centralized Lasso on the pool
 ## Files
 
 - `Bolouri_Keivan_abs.pdf` / `Bolouri_Keivan_abs.tex` — one-page abstract
-- `STAT102B_Final_Project.Rmd` — course analysis notebook
+- `FederatedLasso.Rmd` — analysis notebook
 - `node*_X_*.csv`, `node*_y_*.csv` — site-level design matrices and responses (all 12 files)
 - `data/` — simulation and pilot CSVs (raw draws, summaries, and `data/sim/` replication files)
 

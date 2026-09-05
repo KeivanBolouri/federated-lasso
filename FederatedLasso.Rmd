@@ -1,5 +1,5 @@
 ---
-title: "Stat 102 B -- Spring 2026 -- Final Project"
+title: "How Many Local Epochs?"
 author: "Keivan Bolouri -- Student ID: 806338280"
 date: "`r format(Sys.Date(), '%B %d, %Y')`"
 colorlinks: true
