@@ -35,16 +35,17 @@ by soft-thresholding, drift can lead sites to prune different predictors --- the
 variable list, not merely a worse fit.
 
 \noindent\textbf{Setup.}
-We evaluate a synchronous federated coordinate-descent Lasso using a high-dimensional
-continuous-response regression dataset provided for the STAT~102B (Spring 2026) final project
-(course-supplied CSV files with unlabeled predictors). After the supplied preprocessing, the data contain
-$n=800$ observations and $p=600$ predictors and are computationally partitioned into $K=3$
-disjoint sites with sample sizes $m_j=400,240,160$. Each site selects its regularization parameter independently
-by local validation. Because the true coefficient support is unknown, a centralized Lasso fitted to the pooled
-sample serves as the reference throughout. Each site then runs $E$ full coordinate-descent passes per round,
-and the server aggregates by sample-size weight; raw data never leaves a site. We sweep
-$E\in\{1,2,3,5,8,10,15,20\}$, recording communication rounds, upload cost, and agreement between the
-federated active set and that reference (197 active predictors).
+We evaluate a synchronous federated coordinate-descent Lasso using the publicly available
+STAT~102B high-dimensional regression dataset obtained from
+\texttt{github.com/KeivanBolouri/federated-lasso}.
+After preprocessing, the data contain $n=800$ observations and $p=600$ predictors and are
+computationally partitioned into $K=3$ disjoint sites with sample sizes $m_j=400,240,160$.
+Each site selects its regularization parameter independently. Because the true coefficient support is
+unknown, a centralized Lasso fitted to the pooled sample serves as the reference throughout.
+Each site then runs $E$ full coordinate-descent passes per round, and the server aggregates by
+sample-size weight; raw data never leaves a site. We sweep $E\in\{1,2,3,5,8,10,15,20\}$,
+recording communication rounds, upload cost, and agreement between the federated active set and
+that reference (197 active predictors).
 
 \noindent\textbf{Results.}
 Recall against the reference falls monotonically from 86.3\% to 69.5\% as $E$ grows from 1 to 20,
