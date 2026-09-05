@@ -1,6 +1,6 @@
 ---
 title: "How Many Local Epochs?"
-author: "Keivan Bolouri -- Student ID: 806338280"
+author: "Keivan Bolouri"
 date: "`r format(Sys.Date(), '%B %d, %Y')`"
 colorlinks: true
 linkcolor: blue
