@@ -1,0 +1,56 @@
+\section{Illustration on a three-site data set}
+\label{sec:realdata}
+
+We close with an illustration on the data set distributed with this
+article: a high-dimensional continuous-response regression sample with
+$n = 800$ training and $200$ validation observations on $p = 600$
+predictors, partitioned into $K = 3$ disjoint sites of sizes
+$(400, 240, 160)$ with validation splits $(100, 60, 40)$. The
+data-generating process and the true coefficient vector are not available
+to us, so, unlike in Section~\ref{sec:sim}, no ground-truth support exists:
+the pooled Lasso fit is used as the \emph{reference} support and all
+agreement metrics are agreement with that estimator, not correctness. The
+partition is computational rather than institutional, so the sites differ
+only in size; this design isolates the aggregation effect from genuine
+between-site heterogeneity.
+
+Locally selected penalties were $\lambda = (\Slamone, \Slamtwo, \Slamthree)$
+for sites $1$--$3$, giving $\bar\lambda = \Slambar$; the pooled reference
+selected $\Slampooled$ and retained $\Srefactive$ active predictors.
+
+\input{tables/real_data}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.85\textwidth]{figures/fig3_realdata.pdf}
+\caption{Three-site data illustration. Left: active-set size against $E$.
+Right: the aggregated objective $F$ at the returned estimator; consensus
+ADMM (dashed) minimises $F$ exactly, so the vertical distance to it is the
+optimisation gap of each averaging schedule.}
+\label{fig:real}
+\end{figure}
+
+Table~\ref{tab:real} reproduces the pattern of Section~\ref{sec:results} on
+these data. Plain averaging at $E = 1$ retains $\Sfedactive$ of $600$
+predictors---more than twice the reference---and its agreement with the
+reference is $F_1 = \SfedFone$, barely above the $\SlocalFone$ obtained by
+fitting the Lasso at the largest site alone and ignoring the other two.
+Adding the server-side threshold cuts the active set to $\Sstactive$ and
+raises $F_1$ to $\SstFone$ for one extra round of scalar traffic. Consensus
+ADMM, solving the same aggregated objective exactly, retains
+$\Sadmmactive$ predictors, of which $\Sadmmtp$ are in the reference support
+and $\Sadmmfp$ are not, for $F_1 = \SadmmFone$.
+
+The objective values make the optimisation gap concrete. Consensus ADMM
+attains $F = \Sadmmobj$; plain averaging at $E = 1$ stops at
+$F = \Sfedobj$, or $\Sgappct$ above the minimum of the very objective it is
+constructed to target. The gap is not monotone in $E$: it is smallest at
+$E = 2$ ($F = \Sfedobjtwo$) and then widens steadily to $\Sfedobjtwenty$ at
+$E = 20$. Its variation across the whole grid, $\Sfedobjrange$, is about a
+fifth of its distance from the minimum, $\Sgapabs$, which is the point:
+choosing $E$ moves the objective far less than choosing how to aggregate. The familiar $E$ effects are present as
+well---rounds fall from $\Sroundsone$ to $\Sroundstwenty$ and upload from
+$\Skibone$ to $\Skibtwenty$~KiB, while total local work rises from
+$\Sepochsone$ to $\Sepochstwenty$ coordinate-descent epochs per site---but
+they operate on an estimator that is, at every $E$, far from the solution of
+its own optimisation problem.

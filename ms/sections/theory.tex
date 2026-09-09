@@ -1,0 +1,157 @@
+\section{Why the aggregated iterate is not sparse}
+\label{sec:theory}
+
+The results in this section are elementary. We state them carefully because
+they change the interpretation of the empirical comparisons that motivate
+this line of work.
+
+\subsection{Orthogonal designs: no dependence on $E$ at all}
+
+Assume for this subsection that $p \le \min_j m_j$ and that each site's
+design is orthogonal, $X_j^\top X_j = m_j I_p$; write
+$z_j = X_j^\top y_j / m_j$ for the site's marginal correlation vector.
+
+\begin{proposition}[Orthogonal designs]
+\label{prop:orth}
+Under the above assumptions:
+\begin{enumerate}
+\item[(i)] For every $E \ge 1$ and every starting point $\bbeta \in \R^p$,
+ $T_j^E(\bbeta) = \soft(z_j, \lambda_j)$.
+\item[(ii)] Consequently Algorithm~\ref{alg:fedavg} produces
+ $\bbeta_t = \bbar := \sum_{j} w_j \soft(z_j, \lambda_j)$ for all $t \ge 1$,
+ for every $E$. The iteration terminates after two rounds and its output does
+ not depend on $E$.
+\item[(iii)] If in addition the pooled design is orthogonal,
+ $X^\top X = m I_p$, then $\hat\bbeta_F = \soft(\bar z, \bar\lambda)$ with
+ $\bar z = X^\top y / m = \sum_j w_j z_j$.
+\item[(iv)] $\supp(\hat\bbeta_F) \subseteq \bigcup_{j} \supp\!\big(\soft(z_j,\lambda_j)\big)$,
+ and the right-hand side equals $\supp(\bbar)$ except on the Lebesgue-null
+ set on which the weighted contributions cancel exactly at some coordinate.
+\end{enumerate}
+\end{proposition}
+
+\begin{proof}
+(i) Fix $j$ and a coordinate $k$, and let $\bbeta$ be the current iterate.
+The partial residual is $r = y_j - X_j\bbeta + x_{jk}\bbeta_k$, so
+$x_{jk}^\top r = x_{jk}^\top y_j - x_{jk}^\top X_j \bbeta + \|x_{jk}\|_2^2 \bbeta_k$.
+Orthogonality gives $x_{jk}^\top X_j \bbeta = \|x_{jk}\|_2^2 \bbeta_k$ and
+$\|x_{jk}\|_2^2 = m_j$, hence $x_{jk}^\top r = x_{jk}^\top y_j$, which does
+not involve $\bbeta$. Substituting into \eqref{eq:cd},
+$\bbeta_k \leftarrow \soft(x_{jk}^\top y_j, \lambda_j m_j)/m_j
+ = \soft(z_{jk}, \lambda_j)$ by positive homogeneity of $\soft$. Every
+coordinate is set to its final value on the first sweep and is unchanged by
+later sweeps, so $T_j^E = T_j^1$ for all $E$.
+
+(ii) Immediate from (i): $\bbeta_1 = \sum_j w_j \soft(z_j, \lambda_j) = \bbar$
+and $\bbeta_2 = \bbar$, so $\|\bbeta_2 - \bbeta_1\|_2 = 0$.
+
+(iii) By Lemma~\ref{lem:pooled}, $\hat\bbeta_F$ minimises
+$\frac{1}{2m}\|y - X\bbeta\|_2^2 + \bar\lambda\|\bbeta\|_1$, which under
+$X^\top X = mI_p$ separates across coordinates with the stated solution.
+
+(iv) If $|z_{jk}| \le \lambda_j$ for every $j$ then
+$|\bar z_k| \le \sum_j w_j |z_{jk}| \le \sum_j w_j \lambda_j = \bar\lambda$,
+so $k \notin \supp(\hat\bbeta_F)$. Contraposition gives the inclusion. The
+second claim holds because $\bbar_k = 0$ with some
+$\soft(z_j,\lambda_j)_k \neq 0$ requires
+$\sum_j w_j \soft(z_{jk},\lambda_j) = 0$ with a non-zero summand.
+\end{proof}
+
+Part (ii) is the striking one. In the orthogonal case the number of local
+epochs is entirely irrelevant: one epoch already solves the local problem
+exactly, so $E = 1$ and $E = 20$ return the identical estimator after the
+identical number of rounds. \emph{Any} observed dependence of the federated
+solution on $E$ must therefore be attributable to correlation among
+predictors, which is what makes coordinate descent iterative in the first
+place. This is a testable prediction, and Section~\ref{sec:results}
+confirms that the $E$-dependence we observe grows with the correlation of
+the design.
+
+Part (iv) is the one that matters for practice. Averaging is linear,
+soft-thresholding is not, and a convex combination of sparse vectors
+inherits the union of their supports. The aggregated iterate is therefore
+systematically denser than the estimator it is meant to approximate, and
+the excess grows with the number of sites.
+
+\begin{corollary}[False positives accumulate with $K$]
+\label{cor:fp}
+In the setting of Proposition~\ref{prop:orth}, suppose $\lambda_j = \lambda$
+for all $j$ and that for a null coordinate $k$ (that is,
+$\bbeta^\star_k = 0$) the site statistics satisfy
+$z_{jk} \sim N(0, \sigma^2/m_j)$ independently across sites. Then
+\[
+\Prob\big(k \in \supp(\bbar)\big)
+ = 1 - \prod_{j=1}^{K}\Big\{1 - 2\bar\Phi\big(\lambda \sqrt{m_j}/\sigma\big)\Big\}
+ \;\ge\; 2\bar\Phi\big(\lambda \sqrt{m_{j_0}}/\sigma\big)
+ \;>\; 2\bar\Phi\big(\lambda \sqrt{m}/\sigma\big)
+ = \Prob\big(k \in \supp(\hat\bbeta_F)\big),
+\]
+for any $j_0$, where $\bar\Phi$ is the standard normal survival function.
+The expected number of false positives of $\bbar$ therefore strictly exceeds
+that of $\hat\bbeta_F$, and is non-decreasing in $K$ at fixed $m$.
+\end{corollary}
+
+\begin{proof}
+The events $\{|z_{jk}| > \lambda\}$ are independent, which gives the
+equality; the first inequality drops all but one factor; the strict
+inequality follows from $m > m_{j_0}$ and strict monotonicity of
+$\bar\Phi$; the last equality uses part (iii) with
+$\bar z_k \sim N(0,\sigma^2/m)$. Adding a site multiplies one more factor
+strictly below one into the product.
+\end{proof}
+
+Corollary~\ref{cor:fp} says that splitting a fixed sample across more sites
+and averaging the resulting Lasso fits inflates the active set even when
+nothing is wrong with the optimisation. The mechanism is screening at $K$
+different, noisier thresholds instead of one.
+
+\subsection{General designs: what a fixed point is}
+
+Outside the orthogonal case $T_j^E$ is a genuine iteration and no closed
+form is available, but the fixed-point structure is still informative.
+Write $D_j^E(\bbeta) = T_j^E(\bbeta) - \bbeta$ for the local displacement.
+
+\begin{proposition}[Averaged stationarity]
+\label{prop:fixed}
+A point $\bbeta^\star$ is a fixed point of Algorithm~\ref{alg:fedavg} if and
+only if
+\begin{equation}
+\sum_{j=1}^{K} w_j D_j^E(\bbeta^\star) = 0 .
+\label{eq:fixedpoint}
+\end{equation}
+Moreover $D_j^E(\bbeta^\star) = 0$ for every $j$ if and only if
+$\bbeta^\star$ minimises every local objective $\Lloc_j$ simultaneously.
+Hence, unless the local minimisers coincide, every fixed point is sustained
+by non-zero local displacements that cancel only in the weighted average,
+and \eqref{eq:fixedpoint} does not imply $0 \in \partial F(\bbeta^\star)$.
+\end{proposition}
+
+\begin{proof}
+The update is $\bbeta_{t+1} = \sum_j w_j T_j^E(\bbeta_t)
+ = \bbeta_t + \sum_j w_j D_j^E(\bbeta_t)$, which gives
+\eqref{eq:fixedpoint}. For the second claim, cyclic coordinate descent on
+the Lasso converges to a minimiser and leaves a minimiser fixed
+\citep{tseng2001}, so $T_j^E(\bbeta^\star) = \bbeta^\star$ for some (equivalently
+every) $E \ge 1$ if and only if $\bbeta^\star \in \arg\min \Lloc_j$. If the
+sets $\arg\min\Lloc_j$ have empty intersection, no $\bbeta^\star$ satisfying
+\eqref{eq:fixedpoint} has all displacements zero.
+\end{proof}
+
+Condition \eqref{eq:fixedpoint} is an averaged-stationarity condition on the
+\emph{iterates}, not a stationarity condition on $F$. This is the composite
+analogue of the fixed-point bias familiar from local-SGD analyses
+\citep{li2020convergence,karimireddy2020}, with the additional feature that
+here the bias is visible in the support and not only in the loss. Because
+$F$ is the pooled Lasso objective (Lemma~\ref{lem:pooled}), the size of the
+gap $F(\bbeta^\star) - F(\hat\bbeta_F)$ is directly measurable: we report it
+in Sections~\ref{sec:results} and~\ref{sec:realdata} by solving the same
+problem exactly with consensus ADMM.
+
+\begin{remark}
+Proposition~\ref{prop:orth} requires $p \le \min_j m_j$, which fails in the
+high-dimensional regime we study empirically ($p = 600 > m_j$). It should
+be read as an exactly solvable limiting case that isolates the mechanism,
+not as a description of the simulation designs. Its qualitative
+predictions---sparsity destroyed by averaging, $E$-dependence driven by
+correlation---carry over, and we test both.
+\end{remark}

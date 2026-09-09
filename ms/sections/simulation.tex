@@ -1,0 +1,66 @@
+\section{Simulation study}
+\label{sec:sim}
+
+\subsection{Data-generating process}
+
+Each replicate draws a coefficient vector $\bbeta^\star \in \R^{600}$ with
+$s = 30$ non-zero entries at uniformly random positions; the non-zero values
+have random signs and magnitudes drawn uniformly on $[0.4, 1.2]$. There are
+$K = 3$ sites with training sizes $(m_1, m_2, m_3) = (400, 240, 160)$ and
+validation sizes $(100, 60, 40)$, so $m = 800$ and $p = 600$: a genuinely
+high-dimensional regime in which no site can fit the model on its own.
+Responses are $y_j = X_j \bbeta^\star + \epsilon_j$ with Gaussian errors
+whose variance is set to give a signal-to-noise ratio of $1$, computed from
+the realised signal variance in each replicate. An independent test sample
+of $2000$ observations is drawn for out-of-sample prediction error.
+
+Three designs are considered, chosen to separate the two mechanisms in
+Section~\ref{sec:theory}.
+
+\begin{description}
+\item[Independent.] $X_j$ has independent standard normal entries at every
+ site. This is the closest feasible analogue of Proposition~\ref{prop:orth}:
+ exact orthogonality is impossible because $p > m_j$, but the Gram matrices
+ are as close to diagonal as the dimensions allow, so
+ Proposition~\ref{prop:orth}(ii) predicts weak dependence on $E$.
+\item[Correlated.] Rows are AR(1) Gaussian with $\rho = 0.5$ at every site.
+ Coordinate descent now genuinely iterates, so this is where $E$ should
+ matter.
+\item[Heterogeneous.] Sites differ from one another: AR(1) parameters
+ $(0, 0.4, 0.7)$, design scalings $(1.0, 1.4, 0.7)$ and error scalings
+ $(1.0, 1.5, 0.8)$ across sites $1$--$3$, with a shared $\bbeta^\star$.
+ The estimand is therefore common to all sites while the local objectives
+ differ, which is the configuration in which client drift is expected to
+ bite.
+\end{description}
+
+Sites are heterogeneous in size in all three designs, so the aggregation
+weights $(0.50, 0.30, 0.20)$ are never uniform.
+
+\subsection{Protocol and tuning}
+
+Each site selects $\lambda_j$ once, before federated fitting, by minimising
+mean squared error on its own validation split over a $30$-point grid
+logarithmically spaced from $\lambda_j^{\max} = \|X_j^\top y_j\|_\infty/m_j$
+down to $10^{-3}\lambda_j^{\max}$, and holds it fixed. The pooled reference
+is tuned by the same rule on the concatenated validation split. Federated
+fitting starts from $\bbeta_0 = 0$, uses tolerance
+$\varepsilon_{\mathrm{tol}} = 10^{-5}$ on $\|\bbeta_{t+1} - \bbeta_t\|_2$
+and a cap of $500$ rounds, and is run for
+$E \in \{1, 2, 3, 5, 8, 10, 15, 20\}$. The \textsc{FedAvg-ST} threshold grid
+is $\{0\} \cup \{$39 points log-spaced on
+$[10^{-3}\bar\lambda,\, 5\bar\lambda]\}$. Consensus ADMM uses $\rho = 1$ and
+runs to primal and dual residual tolerance $10^{-8}$.
+
+\subsection{Implementation and replication}
+
+Local solves use the cyclic coordinate-descent Lasso of scikit-learn
+\citep{pedregosa2011} with warm starts and the duality-gap tolerance set to
+zero, so that a call with \texttt{max\_iter} $= E$ performs exactly $E$ full
+passes; we verified against sequential single-epoch calls that the two agree
+to machine precision, and that the ADMM solver reproduces the
+coordinate-descent Lasso solution to $2 \times 10^{-8}$ in the
+single-site case. Each design is replicated $100$ times with recorded
+seeds. All reported quantities are means over replicates with Monte Carlo
+standard errors; where two schedules are compared, the comparison is made
+within replicate.

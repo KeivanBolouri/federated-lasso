@@ -1,0 +1,19 @@
+\begin{table}[t]
+\centering
+\small
+\caption{Number of coefficients declared active in the data illustration as the activity threshold $\epsilon$ varies. The plain average has no exact zeros, so its apparent sparsity is a choice of $\epsilon$; the thresholded and ADMM solutions do.}
+\label{tab:eps}
+\begin{tabular}{lrrrrr}
+\toprule
+Method & $E$ & $\epsilon=10^{-6}$ & $10^{-4}$ & $10^{-2}$ & $10^{-1}$ \\
+\midrule
+FedAvg & 1 & 402 & 402 & 357 & 103 \\
+FedAvg-ST & 1 & 124 & 124 & 108 & 58 \\
+FedAvg & 5 & 324 & 324 & 285 & 102 \\
+FedAvg-ST & 5 & 121 & 120 & 107 & 54 \\
+FedAvg & 20 & 304 & 304 & 271 & 107 \\
+FedAvg-ST & 20 & 123 & 123 & 113 & 59 \\
+ADMM & --- & 117 & 117 & 110 & 65 \\
+\bottomrule
+\end{tabular}
+\end{table}

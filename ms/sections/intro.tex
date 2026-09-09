@@ -1,0 +1,102 @@
+\section{Introduction}
+\label{sec:intro}
+
+Multi-site statistical analysis is increasingly constrained by data that
+cannot be centralised: electronic health records behind institutional
+firewalls, trials governed by separate data-use agreements, claims
+databases that no single sponsor controls. Federated learning
+\citep{mcmahan2017,kairouz2021} addresses this by exchanging model
+parameters rather than records. A central server broadcasts a current
+parameter vector, each site improves it on its own data for a while, and
+the server aggregates what comes back.
+
+The phrase ``for a while'' hides the design parameter this article is
+about. Let $E$ denote the number of local passes---here, full
+coordinate-descent (CD) epochs---each site performs between aggregation
+rounds. Increasing $E$ reduces the number of communication rounds, which is
+the resource federated protocols are usually built to conserve. It also
+lets each site travel further toward its own optimum before being pulled
+back, which is client drift \citep{li2020convergence,karimireddy2020}. For
+smooth losses the consequence of drift is a worse fit. For the Lasso
+\citep{tibshirani1996} the consequence is sharper, because the
+$\ell_1$ penalty sets coordinates exactly to zero: drift can lead sites to
+prune different predictors, and the damage then appears as a different
+variable list, not merely a larger residual. When the deliverable of the
+analysis is a candidate biomarker panel or a set of covariates for a safety
+model, that difference is the whole result.
+
+This article studies the choice of $E$ for a synchronous federated
+coordinate-descent Lasso in which each site tunes its own penalty on a
+local validation split and the server aggregates by sample-size weight.
+Our starting point was an empirical observation that is easy to reproduce
+and easy to misread: as $E$ grows, the active set of the aggregated
+estimator shrinks and its agreement with a centralised fit deteriorates,
+which invites the conclusion that local epochs damage variable selection
+through drift. The main contribution of this article is to show that this
+reading is, in large part, wrong, and to identify what the aggregation rule
+is actually doing.
+
+\paragraph{Contributions.} Our contributions are as follows.
+
+\begin{enumerate}
+\item \textbf{The aggregated iterate is not sparse.} Averaging is a linear
+operation and soft-thresholding is not; a convex combination of sparse
+vectors carries the \emph{union} of their supports. We prove
+(Proposition~\ref{prop:orth}) that under orthogonal site designs the
+federated iteration reaches its fixed point after a single round
+\emph{regardless of $E$}, that this fixed point is
+$\sum_j w_j \soft(z_j, \lambda_j)$, and that its active set strictly
+contains the active set of the minimiser of the aggregated objective
+whenever the sites disagree. Any dependence on $E$ in the orthogonal case
+is therefore exactly zero, and all observed $E$-dependence must come from
+correlation among predictors.
+
+\item \textbf{The implied objective is the pooled Lasso, and the algorithm
+does not minimise it.} With sample-size weights the aggregated objective
+collapses exactly to the pooled Lasso objective at the weighted-average
+penalty $\bar\lambda$ (Lemma~\ref{lem:pooled}). We characterise the fixed
+point of the general iteration as an averaged-stationarity condition
+(Proposition~\ref{prop:fixed}) that does not coincide with stationarity of
+that objective, and we quantify the resulting gap empirically against
+consensus ADMM \citep{boyd2011}, which minimises the same objective
+exactly.
+
+\item \textbf{A cheap remedy, and an honest accounting of what it fixes.}
+We propose \textsc{FedAvg-ST}, a single additional round in which the
+server applies a soft-threshold whose level is selected by federated
+validation using only scalar residual summaries. It restores sparsity and a
+large share of the selection accuracy, but it does not remove the
+optimisation bias; consensus ADMM does, at a higher communication price.
+
+\item \textbf{Communication is not the only budget.} Ranking schedules by
+communication rounds alone reverses once local computation is counted:
+across our designs, the large-$E$ schedules that transmit least perform the
+most total coordinate-descent work.
+\end{enumerate}
+
+\paragraph{Related work.} The local-epoch trade-off is well studied for
+smooth objectives, where local SGD and its analyses
+\citep{stich2019,li2020convergence} and drift corrections such as FedProx
+\citep{li2020fedprox} and SCAFFOLD \citep{karimireddy2020} are standard;
+composite and proximal federated methods have been developed more recently
+\citep{tran2021}. In the statistics literature, communication-efficient
+distributed sparse estimation has been approached through one-shot and
+surrogate-likelihood constructions \citep{lee2017,battey2018,jordan2019}
+and through distributed optimisation with exact consensus
+\citep{boyd2011,duchi2012,wang2017}. What has received less attention is
+the interaction between parameter averaging and the selection event itself:
+the support-recovery literature \citep{zhaoyu2006,meinshausen2010} is
+written for a single estimator fitted on pooled data, and the federated
+literature typically evaluates loss rather than active sets. The
+observation that averaging sparse vectors is not sparse is elementary; its
+consequence---that $E$-versus-support comparisons for federated Lasso are
+confounded by the aggregation rule---appears not to have been stated
+explicitly, and is the gap this article fills.
+
+The remainder of the article is organised as follows.
+Section~\ref{sec:setup} fixes notation and states the algorithm.
+Section~\ref{sec:theory} contains the analytical results.
+Section~\ref{sec:method} introduces \textsc{FedAvg-ST} and the comparators.
+Sections~\ref{sec:sim} and~\ref{sec:results} describe and report the Monte
+Carlo study, Section~\ref{sec:realdata} an illustration on a three-site
+data set, and Section~\ref{sec:discussion} discusses limitations.
