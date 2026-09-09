@@ -3,7 +3,8 @@ import sys, time, json
 import numpy as np
 import pandas as pd
 from fedlasso import (fedavg, consensus_admm, local_solve, tune_lambda,
-                      soft, objective, lam_grid, select_threshold)
+                      tune_lambda_1se, soft, objective, lam_grid,
+                      select_threshold, consensus_path_exact, select_by_val)
 
 P, S = 600, 30
 MTR = (400, 240, 160)
@@ -63,11 +64,13 @@ def support_metrics(bhat, beta, eps=EPS):
                 precision=prec, recall=rec, F1=f1, jaccard=jac)
 
 
-def row(method, E, bhat, beta, test, rounds, epochs, **extra):
+def row(method, E, bhat, beta, test, rounds, epochs, scalar_kib=0.0, **extra):
     Xt, yt = test
     d = support_metrics(bhat, beta)
+    vec_kib = np.nan if pd.isna(rounds) else rounds * 3 * P * 8 / 1024
     d.update(method=method, E=E, rounds=rounds, local_epochs=epochs,
-             upload_kib=rounds * 3 * P * 8 / 1024,
+             vector_kib=vec_kib, scalar_kib=scalar_kib,
+             upload_kib=(np.nan if pd.isna(vec_kib) else vec_kib + scalar_kib),
              coef_err=float(np.linalg.norm(bhat - beta)),
              test_mse=float(np.mean((yt - Xt @ bhat) ** 2)))
     d.update(extra)
@@ -82,33 +85,66 @@ def one_rep(scenario, seed):
     lam_bar = float(np.dot(w, lams))
     out = []
 
-    # pooled (centralised oracle)
+    # ---- centralised references, both tuning rules -------------------------
     Xp = np.vstack([X for X, _ in sites]); yp = np.concatenate([y for _, y in sites])
     Xpv = np.vstack([X for X, _ in val]); ypv = np.concatenate([y for _, y in val])
     lam_p, _, _ = tune_lambda(Xp, yp, Xpv, ypv)
+    lam_p1, _, _ = tune_lambda_1se(Xp, yp, Xpv, ypv)
     out.append(row("Pooled", np.nan, local_solve(Xp, yp, lam_p), beta, test,
                    np.nan, np.nan, lam=lam_p))
-    # local only (largest site)
+    out.append(row("Pooled-1SE", np.nan, local_solve(Xp, yp, lam_p1), beta, test,
+                   np.nan, np.nan, lam=lam_p1))
+
+    # ---- local-only, both tuning rules --------------------------------------
+    lam_l1, _, _ = tune_lambda_1se(*sites[0], *val[0])
     out.append(row("Local-only", np.nan, local_solve(*sites[0], lams[0]), beta,
                    test, 0, np.nan, lam=lams[0]))
-    # one-shot averaging
+    out.append(row("Local-only-1SE", np.nan, local_solve(*sites[0], lam_l1),
+                   beta, test, 0, np.nan, lam=lam_l1))
+
+    # ---- one-shot averaging --------------------------------------------------
     locs = [local_solve(X, y, lj) for (X, y), lj in zip(sites, lams)]
     out.append(row("One-shot", np.nan, sum(wj * b for wj, b in zip(w, locs)),
                    beta, test, 1, np.nan, lam=lam_bar))
-    # consensus ADMM: exact minimiser of the aggregated objective
+
+    # ---- consensus ADMM: fixed penalty and validation-tuned penalty ----------
     z, it = consensus_admm(sites, w, lam_bar, P)
     out.append(row("ADMM", np.nan, z, beta, test, it, np.nan, lam=lam_bar))
+    agrid = np.logspace(np.log10(lam_bar * 4), np.log10(lam_bar / 8), 15)
+    apath = consensus_path_exact(Xp, yp, agrid)
+    for rule, nm in [("min", "ADMM-CV"), ("1se", "ADMM-CV-1SE")]:
+        k = select_by_val(apath, val, w, rule)
+        out.append(row(nm, np.nan, apath[:, k], beta, test, np.nan, np.nan,
+                       lam=agrid[k]))
 
-    tau_grid = np.concatenate([[0.0], np.logspace(np.log10(lam_bar * 1e-3), np.log10(lam_bar * 5), 39)])
+    # ---- federated schedules --------------------------------------------------
+    tau_grid = np.concatenate([[0.0], np.logspace(np.log10(lam_bar * 1e-3),
+                                                  np.log10(lam_bar * 5), 39)])
+    st_scalars = len(sites) * len(tau_grid) * 3 * 8 / 1024   # 3 scalars per site
     for E in E_GRID:
         b, r, hist, _ = fedavg(sites, w, lams, E, P)
         out.append(row("FedAvg", E, b, beta, test, r, r * E,
                        final_obj=hist[-1], lam=lam_bar))
-        tau, _, _ = select_threshold(b, val, w, tau_grid)
-        bst = soft(b, tau)
-        out.append(row("FedAvg-ST", E, bst, beta, test, r + 1, r * E,
-                       final_obj=objective(sites, bst, w, lams), lam=lam_bar,
-                       tau=tau))
+        for rule, nm in [("1se", "FedAvg-ST"), ("min", "FedAvg-ST-min")]:
+            tau, _, _ = select_threshold(b, val, w, tau_grid, rule=rule)
+            bst = soft(b, tau)
+            out.append(row(nm, E, bst, beta, test, r, r * E,
+                           scalar_kib=st_scalars,
+                           final_obj=objective(sites, bst, w, lams),
+                           lam=lam_bar, tau=tau))
+        # per-round proximal aggregation, threshold tuned by federated validation
+        pgrid = lam_bar * np.array([1.0, 0.5, 0.25, 0.125, 0.0625])
+        sols, rds = [], []
+        for tp in pgrid:
+            bp, rp, hp, _ = fedavg(sites, w, lams, E, P, tau=tp)
+            sols.append(bp); rds.append(rp)
+        M = np.array(sols).T
+        kp = select_by_val(M, val, w, "1se")
+        out.append(row("FedAvg-P", E, M[:, kp], beta, test, rds[kp], rds[kp] * E,
+                       scalar_kib=len(sites) * len(pgrid) * 3 * 8 / 1024,
+                       final_obj=objective(sites, M[:, kp], w, lams),
+                       lam=lam_bar, tau=pgrid[kp]))
+
     for d in out:
         d.update(scenario=scenario, rep=seed)
     return out

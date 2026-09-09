@@ -18,12 +18,24 @@ quantities computed from a plain average of local Lasso fits without saying
 what the aggregation rule does to them; the natural minimum is to report
 sensitivity to the activity threshold $\epsilon$, which we find to be
 substantial. Second, if a sparse consensus model is the deliverable, put a
-selection step where the aggregation happens: the server-side threshold of
-Section~\ref{sec:method} costs one round of scalars and recovers most of
-what averaging loses. Third, if exact consensus is affordable, use it;
-consensus ADMM solves the same objective over the same privacy boundary and
-dominates every averaging variant we tried on support recovery, at a
-communication cost that is higher per problem but entirely predictable.
+selection step where the aggregation happens: a server-side threshold, either
+applied once after convergence (\textsc{FedAvg-ST}) or in every round
+(\textsc{FedAvg-P}), costs a round of scalars and recovers most of what
+averaging loses. The two perform similarly here, which is worth knowing,
+since the retrofit is far easier to bolt onto an existing implementation.
+
+Third, and least comfortable, report the penalty-selection rule as carefully
+as the algorithm. Much of the apparent advantage of the sparse methods over
+the pooled and local baselines in our first pass disappeared once those
+baselines were also tuned by the one-standard-error rule, and the strong
+performance of consensus ADMM at $\bar\lambda$ turned out to depend on
+$\bar\lambda$ happening to be a sparsity-favouring penalty: tuning the
+consensus penalty by validation changes its selection performance
+substantially in both directions depending on the rule used. Exact
+optimisation of a well-chosen objective is worth having, but it is not a
+substitute for choosing the penalty with selection rather than prediction in
+mind, and in the heterogeneous design a single common penalty is the binding
+constraint whatever solver produces it.
 
 The communication accounting deserves a similar caution. Rounds are the
 usual currency because latency dominates in cross-device federated
@@ -42,11 +54,18 @@ heterogeneity. That bound is the natural next step and would turn the
 empirical gap we report into a design rule. The simulations use Gaussian
 designs and a common $\bbeta^\star$ across sites; genuine coefficient
 heterogeneity, categorical predictors, and non-Gaussian responses are all
-outside what we tested. We do not compare against FedProx
-\citep{li2020fedprox} or SCAFFOLD \citep{karimireddy2020}: both are designed
-for smooth stochastic objectives and their proximal and control-variate
-corrections would need to be re-derived for exact coordinate descent on a
-composite objective, which is a paper of its own. Finally, we make no
+outside what we tested. We do not compare against FedProx \citep{li2020fedprox} or SCAFFOLD
+\citep{karimireddy2020}, which are designed for smooth stochastic objectives,
+nor---more importantly---against FedDualAvg \citep{yuan2021fco} or the fast
+federated dual-averaging methods of \citet{bao2022}, which are the principled
+composite alternatives to the retrofits studied here. Those methods replace
+exact local coordinate descent with local dual-averaging steps, so $E$ does
+not mean the same thing in them and a like-for-like comparison requires a
+fixed-communication-budget design rather than a fixed-$E$ one. Our
+\textsc{FedAvg-P} is the closest coordinate-descent analogue, not a
+substitute for that comparison, and the reader should treat our claims as
+being about averaging-based federated Lasso rather than about the composite
+federated literature as a whole. Finally, we make no
 formal privacy claim. Withholding rows is not a privacy guarantee: the
 uploaded coefficient vector, and the support in particular, carries
 information about the local sample \citep{zhu2021}, and quantifying what a

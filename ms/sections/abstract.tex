@@ -17,18 +17,25 @@ $E$, and we characterise the fixed point of the general iteration as an
 averaged-stationarity condition that does not coincide with stationarity of
 the aggregated objective. Consequently, published comparisons of active-set
 size or support agreement across $E$ measure an artefact of the aggregation
-rule as much as client drift. We propose a one-round remedy, a server-side
-soft-threshold whose level is chosen by federated validation using scalar
-summaries only, and we compare both against consensus ADMM, which minimises
-exactly the same aggregated objective. In a Monte Carlo study spanning
-independent, correlated and heterogeneous site designs, plain averaging
-selects a large fraction of all predictors at every $E$, the server-side
-threshold recovers most of the lost selection accuracy at negligible
-communication cost, and consensus ADMM dominates both when sites are alike, though not
-when they differ, since exact optimisation of a mis-specified common
-penalty is no advantage.
-We also show that ranking schedules by communication rounds alone is
-misleading, since total local computation moves in the opposite direction.
+rule as much as client drift. We compare two repairs---a one-round server-side soft-threshold whose level
+is chosen by federated validation from scalar summaries, and per-round
+proximal aggregation, the coordinate-descent analogue of the composite fix
+that motivates federated dual averaging---against consensus ADMM, which
+minimises exactly the same objective, and against pooled and local baselines
+under \emph{matched} penalty-selection rules. In a Monte Carlo study over
+$200$ replicates in each of three designs, plain averaging selects a third to
+a half of all predictors at every $E$ and is beaten by fitting the Lasso at
+one site and ignoring the others; both repairs recover most of the lost
+selection accuracy at negligible communication cost; and consensus ADMM is
+best when sites are alike but worst among the sparse methods when they are
+not, because exact optimisation cannot compensate for a single common
+penalty. We also find that switching the penalty-selection rule from
+minimum validation error to the one-standard-error rule moves selection
+accuracy further than any choice of $E$, which suggests that studies varying
+the local-epoch count while holding a prediction-tuned penalty fixed are
+varying the wrong parameter. Finally, ranking schedules by communication
+rounds alone is misleading, since total local computation moves in the
+opposite direction.
 \end{abstract}
 
 \noindent\textbf{Keywords:} federated learning; Lasso; coordinate descent;

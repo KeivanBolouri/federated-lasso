@@ -1,33 +1,53 @@
-\begin{table}[t]
+\begin{table}[p]
 \centering
-\small
-\caption{Three-site data illustration ($n=800$ training, $p=600$, $K=3$). Agreement is with the pooled Lasso reference support (\Srefactive\ active predictors), not with a known truth. $F$ is the aggregated objective \eqref{eq:global}; consensus ADMM minimises it exactly.}
+\footnotesize
+\caption{Three-site data illustration ($n=800$ training, $p=600$, $K=3$). Agreement is with the pooled Lasso reference support (\Srefactive\ active predictors), not with a known truth. $F$ is the aggregated objective \eqref{eq:global}; consensus ADMM minimises it exactly. Upload is coefficient-vector traffic; the threshold step adds \Sstscalar~KiB of scalars.}
 \label{tab:real}
 \begin{tabular}{lrrrrrrrrr}
 \toprule
-Method & $E$ & Active & TP & FP & Prec. & Recall & $F_1$ & $F$ & Upload \\
+Method & $E$ & Active & TP & FP & Prec. & Recall & $F_1$ & $F$ & Vec.\ KiB \\
 \midrule
 Pooled & --- & 172 & 172 & 0 & 1.000 & 1.000 & 1.000 & 22.901 & --- \\
+Pooled-1SE & --- & 98 & 95 & 3 & 0.969 & 0.552 & 0.704 & 22.604 & --- \\
 Local-only & --- & 164 & 81 & 83 & 0.494 & 0.471 & 0.482 & 27.041 & 0.0 \\
+Local-only-1SE & --- & 83 & 53 & 30 & 0.639 & 0.308 & 0.416 & 26.015 & 0.0 \\
 One-shot & --- & 299 & 124 & 175 & 0.415 & 0.721 & 0.527 & 25.858 & 14.1 \\
 ADMM & --- & 117 & 115 & 2 & 0.983 & 0.669 & 0.796 & 22.545 & 1870.3 \\
+ADMM-CV & --- & 172 & 172 & 0 & 1.000 & 1.000 & 1.000 & 22.909 & --- \\
+ADMM-CV-1SE & --- & 96 & 93 & 3 & 0.969 & 0.541 & 0.694 & 22.618 & --- \\
 \midrule
 FedAvg & 1 & 402 & 149 & 253 & 0.371 & 0.866 & 0.519 & 25.518 & 393.8 \\
-FedAvg-ST & 1 & 124 & 92 & 32 & 0.742 & 0.535 & 0.622 & 24.382 & 407.8 \\
+FedAvg-ST & 1 & 124 & 92 & 32 & 0.742 & 0.535 & 0.622 & 24.382 & 393.8 \\
+FedAvg-ST-min & 1 & 402 & 149 & 253 & 0.371 & 0.866 & 0.519 & 25.518 & 393.8 \\
+FedAvg-P & 1 & 155 & 103 & 52 & 0.665 & 0.599 & 0.630 & 24.480 & 393.8 \\
 FedAvg & 2 & 376 & 145 & 231 & 0.386 & 0.843 & 0.529 & 25.160 & 239.1 \\
-FedAvg-ST & 2 & 112 & 85 & 27 & 0.759 & 0.494 & 0.599 & 24.453 & 253.1 \\
+FedAvg-ST & 2 & 112 & 85 & 27 & 0.759 & 0.494 & 0.599 & 24.453 & 239.1 \\
+FedAvg-ST-min & 2 & 376 & 145 & 231 & 0.386 & 0.843 & 0.529 & 25.160 & 239.1 \\
+FedAvg-P & 2 & 144 & 99 & 45 & 0.688 & 0.576 & 0.627 & 24.344 & 225.0 \\
 FedAvg & 3 & 350 & 141 & 209 & 0.403 & 0.820 & 0.540 & 25.233 & 182.8 \\
-FedAvg-ST & 3 & 114 & 83 & 31 & 0.728 & 0.483 & 0.580 & 24.608 & 196.9 \\
+FedAvg-ST & 3 & 114 & 83 & 31 & 0.728 & 0.483 & 0.580 & 24.608 & 182.8 \\
+FedAvg-ST-min & 3 & 350 & 141 & 209 & 0.403 & 0.820 & 0.540 & 25.233 & 182.8 \\
+FedAvg-P & 3 & 144 & 91 & 53 & 0.632 & 0.529 & 0.576 & 24.482 & 182.8 \\
 FedAvg & 5 & 324 & 132 & 192 & 0.407 & 0.767 & 0.532 & 25.434 & 140.6 \\
-FedAvg-ST & 5 & 120 & 79 & 41 & 0.658 & 0.459 & 0.541 & 24.853 & 154.7 \\
+FedAvg-ST & 5 & 120 & 79 & 41 & 0.658 & 0.459 & 0.541 & 24.853 & 140.6 \\
+FedAvg-ST-min & 5 & 324 & 132 & 192 & 0.407 & 0.767 & 0.532 & 25.434 & 140.6 \\
+FedAvg-P & 5 & 154 & 91 & 63 & 0.591 & 0.529 & 0.558 & 24.683 & 126.6 \\
 FedAvg & 8 & 320 & 130 & 190 & 0.406 & 0.756 & 0.528 & 25.597 & 112.5 \\
-FedAvg-ST & 8 & 121 & 77 & 44 & 0.636 & 0.448 & 0.526 & 25.013 & 126.6 \\
+FedAvg-ST & 8 & 121 & 77 & 44 & 0.636 & 0.448 & 0.526 & 25.013 & 112.5 \\
+FedAvg-ST-min & 8 & 320 & 130 & 190 & 0.406 & 0.756 & 0.528 & 25.597 & 112.5 \\
+FedAvg-P & 8 & 159 & 89 & 70 & 0.560 & 0.517 & 0.538 & 24.860 & 98.4 \\
 FedAvg & 10 & 312 & 126 & 186 & 0.404 & 0.733 & 0.521 & 25.660 & 98.4 \\
-FedAvg-ST & 10 & 123 & 76 & 47 & 0.618 & 0.442 & 0.515 & 25.060 & 112.5 \\
+FedAvg-ST & 10 & 123 & 76 & 47 & 0.618 & 0.442 & 0.515 & 25.060 & 98.4 \\
+FedAvg-ST-min & 10 & 312 & 126 & 186 & 0.404 & 0.733 & 0.521 & 25.660 & 98.4 \\
+FedAvg-P & 10 & 158 & 87 & 71 & 0.551 & 0.506 & 0.527 & 24.914 & 98.4 \\
 FedAvg & 15 & 307 & 124 & 183 & 0.404 & 0.721 & 0.518 & 25.731 & 84.4 \\
-FedAvg-ST & 15 & 123 & 76 & 47 & 0.618 & 0.442 & 0.515 & 25.111 & 98.4 \\
+FedAvg-ST & 15 & 123 & 76 & 47 & 0.618 & 0.442 & 0.515 & 25.111 & 84.4 \\
+FedAvg-ST-min & 15 & 307 & 124 & 183 & 0.404 & 0.721 & 0.518 & 25.731 & 84.4 \\
+FedAvg-P & 15 & 157 & 87 & 70 & 0.554 & 0.506 & 0.529 & 24.977 & 84.4 \\
 FedAvg & 20 & 304 & 124 & 180 & 0.408 & 0.721 & 0.521 & 25.768 & 84.4 \\
-FedAvg-ST & 20 & 123 & 76 & 47 & 0.618 & 0.442 & 0.515 & 25.139 & 98.4 \\
+FedAvg-ST & 20 & 123 & 76 & 47 & 0.618 & 0.442 & 0.515 & 25.139 & 84.4 \\
+FedAvg-ST-min & 20 & 304 & 124 & 180 & 0.408 & 0.721 & 0.521 & 25.768 & 84.4 \\
+FedAvg-P & 20 & 157 & 87 & 70 & 0.554 & 0.506 & 0.529 & 25.010 & 70.3 \\
 \bottomrule
 \end{tabular}
 \end{table}

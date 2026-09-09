@@ -27,7 +27,7 @@ and keeping the `\input{sections/...}` lines unchanged.
 | `numbers.tex` | auto-generated `\newcommand`s for every number quoted in the text |
 | `sections/*.tex` | one file per section |
 | `tables/*.tex` | auto-generated tables |
-| `figures/*.pdf` | auto-generated figures (created by `make_outputs.py`) |
+| `figures/*.pdf` | auto-generated figures |
 | `refs.bib` | bibliography |
 | `code/` | replication code and result files |
 
@@ -39,32 +39,35 @@ re-running the study updates the manuscript.
 
 ```
 cd code
-python3 run_sim.py IID           50 2000 IID_a       # 100 reps per design,
-python3 run_sim.py IID           50 3000 IID_b       # split into two chunks
-python3 run_sim.py Correlated    50 2000 Correlated_a
-python3 run_sim.py Correlated    50 3000 Correlated_b
-python3 run_sim.py Heterogeneous 50 2000 Heterogeneous_a
-python3 run_sim.py Heterogeneous 50 3000 Heterogeneous_b
+# 200 replicates per design, split into three chunks with recorded seeds
+for S in IID Correlated Heterogeneous; do
+  python3 run_sim.py $S 67 5000 ${S}_a
+  python3 run_sim.py $S 67 6000 ${S}_b
+  python3 run_sim.py $S 66 7000 ${S}_c
+done
 python3 real_data.py        # three-site data illustration (Section 7)
 python3 eps_sens.py         # activity-threshold sensitivity (Appendix)
 python3 make_outputs.py     # rebuild tables, figures and numbers.tex
 ```
 
 Requires numpy, pandas, scikit-learn and matplotlib. `run_sim.py` takes
-roughly 20 s per replicate on one core. Seeds are the third argument and are
+roughly 4 s per replicate on one core. Seeds are the third argument and are
 recorded in the output files.
-
-Site-level CSVs (`node*_*.csv`) live at the repository root. Before running
-`real_data.py` or `eps_sens.py`, set `R` in those scripts to that directory.
-`make_outputs.py` writes `tables/`, `figures/` and `numbers.tex` through the
-`MS` path at the top of the file; point `MS` at this `ms/` folder.
 
 ## Code map
 
-- `fedlasso.py` — estimators: `fedavg` (Algorithm 1), `select_threshold`
-  (FedAvg-ST), `consensus_admm`, `local_solve`, `tune_lambda`.
+- `fedlasso.py` — estimators: `fedavg` (Algorithm 1; pass `tau` for the
+  per-round proximal variant FedAvg-P), `select_threshold` (FedAvg-ST),
+  `consensus_admm` and `admm_path`, `consensus_path_exact` (the pooled-Lasso
+  path, equal to the consensus path by Lemma 1), `local_solve`,
+  `tune_lambda` and `tune_lambda_1se`, `select_by_val`.
   `local_epochs` runs exactly `E` full coordinate-descent passes by setting
   scikit-learn's duality-gap tolerance to zero.
+
+Methods compared: Pooled and Pooled-1SE, Local-only and Local-only-1SE,
+One-shot averaging, ADMM at the weighted-average penalty, ADMM-CV and
+ADMM-CV-1SE, FedAvg, FedAvg-ST, FedAvg-ST-min and FedAvg-P across
+E ∈ {1,2,3,5,8,10,15,20}.
 - `run_sim.py` — Monte Carlo driver: data-generating process, the three
   designs, all methods, all metrics.
 - `real_data.py` — same pipeline on the three-site CSVs.

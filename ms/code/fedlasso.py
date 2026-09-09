@@ -44,7 +44,7 @@ def lam_grid(X, y, n_lam=30, eps=1e-3):
 def tune_lambda(Xtr, ytr, Xva, yva, n_lam=30):
     """Select lambda minimising validation MSE over a log grid (paper's rule)."""
     grid = lam_grid(Xtr, ytr, n_lam)
-    _, coefs, _ = lasso_path(Xtr, ytr, alphas=grid, tol=1e-7, max_iter=20000)
+    _, coefs, _ = lasso_path(Xtr, ytr, alphas=grid, tol=1e-4, max_iter=2000)
     resid = yva[:, None] - Xva @ coefs
     mse = np.mean(resid ** 2, axis=0)
     k = int(np.argmin(mse))
@@ -95,16 +95,22 @@ def fedavg(sites, w, lams, E, p, tol=1e-5, max_rounds=500, tau=None,
     return beta, t + 1, hist, chosen_tau
 
 
-def consensus_admm(sites, w, lam_bar, p, rho=1.0, max_iter=500, tol=1e-8):
+def consensus_admm(sites, w, lam_bar, p, rho=1.0, max_iter=500, tol=1e-8,
+                   warm=None, return_state=False):
     """Global consensus ADMM: exact minimiser of sum_j w_j L_j(b) + lam_bar||b||_1."""
     facs = []
     for (X, y), wj in zip(sites, w):
         m = len(y)
         A = wj * (X.T @ X) / m + rho * np.eye(p)
         facs.append((np.linalg.cholesky(A), wj * (X.T @ y) / m))
-    x = [np.zeros(p) for _ in sites]
-    u = [np.zeros(p) for _ in sites]
-    z = np.zeros(p)
+    if warm is not None and warm[0] is not None:
+        x = [xi.copy() for xi in warm[0]]
+        u = [ui.copy() for ui in warm[1]]
+        z = warm[2].copy()
+    else:
+        x = [np.zeros(p) for _ in sites]
+        u = [np.zeros(p) for _ in sites]
+        z = np.zeros(p)
     K = len(sites)
     for it in range(max_iter):
         for j, (L, b) in enumerate(facs):
@@ -121,6 +127,8 @@ def consensus_admm(sites, w, lam_bar, p, rho=1.0, max_iter=500, tol=1e-8):
         r = np.sqrt(sum(np.sum((xj - z) ** 2) for xj in x))
         if r < tol * np.sqrt(p) and s < tol * np.sqrt(p):
             break
+    if return_state:
+        return z, it + 1, (x, u, z)
     return z, it + 1
 
 
@@ -150,3 +158,64 @@ def select_threshold(bar, val, w, tau_grid, rule="1se"):
     thr = mse[k] + se[k]
     ok = np.where(mse <= thr)[0]
     return tau_grid[ok.max()], mse, se
+
+
+def _one_se_pick(grid, mse, se_at_min, ascending_sparser=True):
+    """Largest penalty whose validation MSE is within one SE of the minimum."""
+    k = int(np.argmin(mse))
+    ok = np.where(mse <= mse[k] + se_at_min)[0]
+    return int(ok.max()) if ascending_sparser else int(ok.min())
+
+
+def tune_lambda_1se(Xtr, ytr, Xva, yva, n_lam=30):
+    """Validation tuning with the one-standard-error rule (grid ordered
+    from large to small penalty, so 'largest within one SE' is index-min)."""
+    grid = lam_grid(Xtr, ytr, n_lam)              # decreasing
+    _, coefs, _ = lasso_path(Xtr, ytr, alphas=grid, tol=1e-4, max_iter=2000)
+    r2 = (yva[:, None] - Xva @ coefs) ** 2
+    mse = r2.mean(axis=0)
+    k = int(np.argmin(mse))
+    se = r2[:, k].std(ddof=1) / np.sqrt(len(yva))
+    ok = np.where(mse <= mse[k] + se)[0]
+    return grid[int(ok.min())], grid, mse       # index-min == largest lambda
+
+
+def admm_path(sites, w, grid, p, rho=1.0, max_iter=500, tol=1e-8):
+    """Consensus-ADMM Lasso path with warm starts (used for verification)."""
+    out, z0, u0, x0 = [], None, None, None
+    for lam in grid:
+        z, _, state = consensus_admm(sites, w, lam, p, rho=rho, max_iter=max_iter,
+                                     tol=tol, warm=(x0, u0, z0), return_state=True)
+        x0, u0, z0 = state
+        out.append(z.copy())
+    return np.array(out).T          # p x n_lam
+
+
+def consensus_path_exact(Xp, yp, grid):
+    """Solutions of F(beta) over a penalty grid.
+
+    By Lemma 1 the consensus objective equals the pooled Lasso objective, so
+    the consensus-ADMM solution at penalty lam is the pooled Lasso solution at
+    lam.  We verify this numerically in `admm_path` and use the direct solver
+    here; the communication cost of ADMM is reported separately from an actual
+    ADMM run.
+    """
+    _, coefs, _ = lasso_path(Xp, yp, alphas=grid, tol=1e-6, max_iter=20000)
+    return coefs
+
+
+def select_by_val(coefs, val, w, rule="min"):
+    """Pick a column of `coefs` by weighted validation MSE (min or 1-SE)."""
+    allr2 = []
+    mse = np.zeros(coefs.shape[1])
+    for (Xv, yv), wj in zip(val, w):
+        r2 = (yv[:, None] - Xv @ coefs) ** 2
+        mse += wj * r2.mean(axis=0)
+        allr2.append(r2)
+    allr2 = np.vstack(allr2)
+    k = int(np.argmin(mse))
+    if rule == "min":
+        return k
+    se = allr2[:, k].std(ddof=1) / np.sqrt(allr2.shape[0])
+    ok = np.where(mse <= mse[k] + se)[0]
+    return int(ok.min())            # grids are ordered large -> small penalty

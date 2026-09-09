@@ -49,8 +49,15 @@ $\varepsilon_{\mathrm{tol}} = 10^{-5}$ on $\|\bbeta_{t+1} - \bbeta_t\|_2$
 and a cap of $500$ rounds, and is run for
 $E \in \{1, 2, 3, 5, 8, 10, 15, 20\}$. The \textsc{FedAvg-ST} threshold grid
 is $\{0\} \cup \{$39 points log-spaced on
-$[10^{-3}\bar\lambda,\, 5\bar\lambda]\}$. Consensus ADMM uses $\rho = 1$ and
-runs to primal and dual residual tolerance $10^{-8}$.
+$[10^{-3}\bar\lambda,\, 5\bar\lambda]\}$. Consensus ADMM uses $\rho = 1$ and runs to primal and dual residual
+tolerance $10^{-8}$; the \textsc{ADMM-CV} penalty grid has $15$ points
+log-spaced on $[\bar\lambda/8,\, 4\bar\lambda]$. Because
+Lemma~\ref{lem:pooled} identifies the consensus solution at penalty $\lambda$
+with the pooled Lasso solution at $\lambda$, we compute the \textsc{ADMM-CV}
+path with a direct solver rather than by running ADMM $15$ times; we verified
+the two agree to $1.1 \times 10^{-6}$ and report ADMM's communication cost
+from an actual run at $\bar\lambda$. The \textsc{FedAvg-P} threshold grid is
+$\bar\lambda \cdot \{1, \tfrac12, \tfrac14, \tfrac18, \tfrac1{16}\}$.
 
 \subsection{Implementation and replication}
 
@@ -59,8 +66,9 @@ Local solves use the cyclic coordinate-descent Lasso of scikit-learn
 zero, so that a call with \texttt{max\_iter} $= E$ performs exactly $E$ full
 passes; we verified against sequential single-epoch calls that the two agree
 to machine precision, and that the ADMM solver reproduces the
-coordinate-descent Lasso solution to $2 \times 10^{-8}$ in the
-single-site case. Each design is replicated $100$ times with recorded
-seeds. All reported quantities are means over replicates with Monte Carlo
+coordinate-descent Lasso solution to $2 \times 10^{-8}$ in the single-site
+case. Penalty grids for tuning are computed with a looser solver tolerance
+($10^{-4}$) than the final fits ($10^{-10}$); we checked that this does not
+change the selected penalty. Each design is replicated $200$ times with recorded seeds. All reported quantities are means over replicates with Monte Carlo
 standard errors; where two schedules are compared, the comparison is made
 within replicate.

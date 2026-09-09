@@ -39,17 +39,27 @@ is actually doing.
 \paragraph{Contributions.} Our contributions are as follows.
 
 \begin{enumerate}
-\item \textbf{The aggregated iterate is not sparse.} Averaging is a linear
-operation and soft-thresholding is not; a convex combination of sparse
-vectors carries the \emph{union} of their supports. We prove
-(Proposition~\ref{prop:orth}) that under orthogonal site designs the
-federated iteration reaches its fixed point after a single round
-\emph{regardless of $E$}, that this fixed point is
-$\sum_j w_j \soft(z_j, \lambda_j)$, and that its active set strictly
-contains the active set of the minimiser of the aggregated objective
-whenever the sites disagree. Any dependence on $E$ in the orthogonal case
-is therefore exactly zero, and all observed $E$-dependence must come from
-correlation among predictors.
+\item \textbf{Local epochs are irrelevant under orthogonal designs.} That
+averaging destroys sparsity in composite problems is known: it is the
+``curse of primal averaging'' of \citet{yuan2021fco}, whose FedDualAvg
+algorithm was introduced precisely to avoid it, and it underlies the
+federated dual-averaging methods of \citet{bao2022}. What that literature
+does not settle is what the local-epoch parameter does to the resulting
+\emph{active set}. We show (Proposition~\ref{prop:orth}) that under
+orthogonal site designs the federated coordinate-descent iteration reaches
+its fixed point after a single round \emph{regardless of $E$}, that this
+fixed point is $\sum_j w_j \soft(z_j, \lambda_j)$, and that its active set
+contains that of the minimiser of the aggregated objective. Any dependence
+on $E$ in the orthogonal case is therefore exactly zero, and all observed
+$E$-dependence must come from correlation among predictors.
+
+\item \textbf{False positives accumulate with the number of sites.}
+Corollary~\ref{cor:fp} gives the statistical counterpart of the
+optimisation phenomenon: under a balanced partition of a fixed sample, the
+probability that a null coordinate enters the averaged active set is
+strictly increasing in the number of sites. Splitting data across more
+sites and averaging inflates the variable list even when the optimisation
+is working perfectly.
 
 \item \textbf{The implied objective is the pooled Lasso, and the algorithm
 does not minimise it.} With sample-size weights the aggregated objective
@@ -61,12 +71,14 @@ that objective, and we quantify the resulting gap empirically against
 consensus ADMM \citep{boyd2011}, which minimises the same objective
 exactly.
 
-\item \textbf{A cheap remedy, and an honest accounting of what it fixes.}
-We propose \textsc{FedAvg-ST}, a single additional round in which the
-server applies a soft-threshold whose level is selected by federated
-validation using only scalar residual summaries. It restores sparsity and a
-large share of the selection accuracy, but it does not remove the
-optimisation bias; consensus ADMM does, at a higher communication price.
+\item \textbf{Selection is driven by the tuning rule at least as much as by
+the aggregation rule.} We compare a server-side thresholding retrofit
+(\textsc{FedAvg-ST}), per-round proximal aggregation (\textsc{FedAvg-P}, the
+coordinate-descent analogue of the composite fix), and consensus ADMM
+against pooled and local baselines with \emph{matched} penalty-selection
+rules. Holding the selection rule fixed changes the ranking substantially,
+and we report this rather than the more flattering comparison against
+prediction-tuned baselines.
 
 \item \textbf{Communication is not the only budget.} Ranking schedules by
 communication rounds alone reverses once local computation is counted:
@@ -83,15 +95,27 @@ composite and proximal federated methods have been developed more recently
 distributed sparse estimation has been approached through one-shot and
 surrogate-likelihood constructions \citep{lee2017,battey2018,jordan2019}
 and through distributed optimisation with exact consensus
-\citep{boyd2011,duchi2012,wang2017}. What has received less attention is
-the interaction between parameter averaging and the selection event itself:
-the support-recovery literature \citep{zhaoyu2006,meinshausen2010} is
-written for a single estimator fitted on pooled data, and the federated
-literature typically evaluates loss rather than active sets. The
-observation that averaging sparse vectors is not sparse is elementary; its
-consequence---that $E$-versus-support comparisons for federated Lasso are
-confounded by the aggregation rule---appears not to have been stated
-explicitly, and is the gap this article fills.
+\citep{boyd2011,duchi2012,wang2017}. Closest to this article is the federated composite optimisation
+literature. \citet{yuan2021fco} name the ``curse of primal averaging'' and
+propose FedDualAvg, a primal--dual method that averages dual rather than
+primal states; \citet{bao2022} give fast federated dual-averaging
+algorithms with statistical recovery guarantees for composite problems
+including sparse regression. Our starting observation is theirs, and we
+claim no priority for it.
+
+What that literature is not about is variable selection as an outcome. It
+is written in the language of convergence rates and communication
+complexity for the objective, and the local-step count appears there as a
+parameter in a rate rather than as something that changes the estimated
+active set. The support-recovery literature
+\citep{zhaoyu2006,meinshausen2010}, conversely, is written for a single
+estimator fitted on pooled data. This article sits between them: we ask
+what averaging with $E$ local coordinate-descent epochs does to the
+variable list, show that in the orthogonal case the answer is
+``nothing---$E$ is irrelevant'', quantify how false positives accumulate
+with the number of sites, and demonstrate on simulated and real data that
+reported support-versus-$E$ curves are dominated by the aggregation and
+tuning rules rather than by client drift.
 
 The remainder of the article is organised as follows.
 Section~\ref{sec:setup} fixes notation and states the algorithm.

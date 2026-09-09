@@ -75,35 +75,44 @@ the excess grows with the number of sites.
 
 \begin{corollary}[False positives accumulate with $K$]
 \label{cor:fp}
-In the setting of Proposition~\ref{prop:orth}, suppose $\lambda_j = \lambda$
-for all $j$ and that for a null coordinate $k$ (that is,
-$\bbeta^\star_k = 0$) the site statistics satisfy
+In the setting of Proposition~\ref{prop:orth} with $K \ge 2$, suppose
+$\lambda_j = \lambda$ for all $j$ and that for a null coordinate $k$ (that
+is, $\bbeta^\star_k = 0$) the site statistics satisfy
 $z_{jk} \sim N(0, \sigma^2/m_j)$ independently across sites. Then
 \[
 \Prob\big(k \in \supp(\bbar)\big)
  = 1 - \prod_{j=1}^{K}\Big\{1 - 2\bar\Phi\big(\lambda \sqrt{m_j}/\sigma\big)\Big\}
- \;\ge\; 2\bar\Phi\big(\lambda \sqrt{m_{j_0}}/\sigma\big)
  \;>\; 2\bar\Phi\big(\lambda \sqrt{m}/\sigma\big)
  = \Prob\big(k \in \supp(\hat\bbeta_F)\big),
 \]
-for any $j_0$, where $\bar\Phi$ is the standard normal survival function.
-The expected number of false positives of $\bbar$ therefore strictly exceeds
-that of $\hat\bbeta_F$, and is non-decreasing in $K$ at fixed $m$.
+where $\bar\Phi$ is the standard normal survival function. If in addition
+the partition is balanced, $m_j = m/K$, the left-hand side is strictly
+increasing in $K$.
 \end{corollary}
 
 \begin{proof}
 The events $\{|z_{jk}| > \lambda\}$ are independent, which gives the
-equality; the first inequality drops all but one factor; the strict
-inequality follows from $m > m_{j_0}$ and strict monotonicity of
-$\bar\Phi$; the last equality uses part (iii) with
-$\bar z_k \sim N(0,\sigma^2/m)$. Adding a site multiplies one more factor
-strictly below one into the product.
+equality. Dropping all factors but one,
+$\Prob(k \in \supp(\bbar)) \ge 2\bar\Phi(\lambda\sqrt{m_1}/\sigma)
+ > 2\bar\Phi(\lambda\sqrt{m}/\sigma)$ because $m > m_1$ when $K \ge 2$ and
+$\bar\Phi$ is strictly decreasing; the final equality uses part (iii) with
+$\bar z_k \sim N(0,\sigma^2/m)$. For the monotonicity, write
+$q_K = 2\bar\Phi(\lambda\sqrt{m/K}/\sigma) \in (0,1)$, so that
+$\Prob_K := 1 - (1 - q_K)^K$. The map $K \mapsto q_K$ is strictly
+increasing because $\sqrt{m/K}$ is decreasing, hence
+\[
+\Prob_{K+1} = 1 - (1 - q_{K+1})^{K+1} \;\ge\; 1 - (1 - q_K)^{K+1}
+ \;>\; 1 - (1 - q_K)^{K} = \Prob_K .
+\]
 \end{proof}
 
 Corollary~\ref{cor:fp} says that splitting a fixed sample across more sites
 and averaging the resulting Lasso fits inflates the active set even when
 nothing is wrong with the optimisation. The mechanism is screening at $K$
-different, noisier thresholds instead of one.
+different, noisier thresholds instead of one. The balanced-partition
+qualification is needed: an arbitrary repartition changes the $m_j$ as well
+as their number, and monotonicity in $K$ can fail if the added sites are
+much larger than the existing ones.
 
 \subsection{General designs: what a fixed point is}
 

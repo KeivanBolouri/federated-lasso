@@ -36,10 +36,28 @@ predictors---more than twice the reference---and its agreement with the
 reference is $F_1 = \SfedFone$, barely above the $\SlocalFone$ obtained by
 fitting the Lasso at the largest site alone and ignoring the other two.
 Adding the server-side threshold cuts the active set to $\Sstactive$ and
-raises $F_1$ to $\SstFone$ for one extra round of scalar traffic. Consensus
-ADMM, solving the same aggregated objective exactly, retains
+raises $F_1$ to $\SstFone$; per-round proximal aggregation gives
+$\SpFone$ with $\Spactive$ active. Consensus ADMM at $\bar\lambda$ retains
 $\Sadmmactive$ predictors, of which $\Sadmmtp$ are in the reference support
-and $\Sadmmfp$ are not, for $F_1 = \SadmmFone$.
+and $\Sadmmfp$ are not, for $F_1 = \SadmmFone$; selecting the consensus
+penalty by validation instead of inheriting $\bar\lambda$ gives
+$F_1 = \SadmmcvFone$ with $\SadmmcvAct$ active, which again shows how much
+of the apparent gain is the penalty rather than the solver. Under the
+minimum-MSE rule \textsc{ADMM-CV} reproduces the pooled reference exactly,
+which is the expected consequence of Lemma~\ref{lem:pooled} and serves here
+as a numerical check rather than as a result; its agreement metrics are
+degenerate by construction and should be read as such. Under matched
+one-standard-error tuning the centralised reference itself keeps only
+$\SpoolseAct$ predictors.
+
+One pattern here differs from the simulations and we flag it rather than
+smooth it over. In Section~\ref{sec:results} the thresholded schedules are
+nearly flat in $E$; on these data \textsc{FedAvg-ST} falls from
+$F_1 = \SstFone$ at $E = 1$ to $\SstFtwenty$ at $E = 20$. Thresholding
+therefore does not universally remove the $E$-dependence of the recovered
+support---it removes it in the designs we simulated, and here it only
+attenuates it. With a single data set and no replication we cannot say which
+feature of these data is responsible.
 
 The objective values make the optimisation gap concrete. Consensus ADMM
 attains $F = \Sadmmobj$; plain averaging at $E = 1$ stops at

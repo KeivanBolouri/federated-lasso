@@ -6,13 +6,27 @@ aggregation step returns a dense vector---and suggests an equally specific
 remedy: apply the proximal operator of the $\ell_1$ penalty at the server,
 where the aggregation happens.
 
-\subsection{\textsc{FedAvg-ST}}
+\subsection{\textsc{FedAvg-ST}: thresholding after convergence}
 
 Let $\bbeta_R$ be the output of Algorithm~\ref{alg:fedavg} after $R$ rounds.
 \textsc{FedAvg-ST} adds a single round in which the server broadcasts a grid
-of candidate thresholds $\tau \in \mathcal{T}$, each site returns the two
-scalars $\sum_i (y_{ji} - x_{ji}^\top \soft(\bbeta_R,\tau))^2$ and its own
-$m_j^{\mathrm{val}}$ for each candidate, and the server selects
+$\mathcal{T}$ of candidate thresholds and each site returns, for each
+candidate $\tau$, the three scalars
+\begin{equation}
+A_j(\tau) = \sum_{i=1}^{m_j^{\mathrm{val}}} r_{ji}(\tau)^2, \qquad
+B_j(\tau) = \sum_{i=1}^{m_j^{\mathrm{val}}} r_{ji}(\tau)^4, \qquad
+m_j^{\mathrm{val}} ,
+\label{eq:scalars}
+\end{equation}
+where $r_{ji}(\tau) = y_{ji} - x_{ji}^\top \soft(\bbeta_R, \tau)$. These are
+sufficient for both the weighted validation mean squared error
+$\widehat{\mathrm{MSE}}(\tau) = \sum_j w_j A_j(\tau)/m_j^{\mathrm{val}}$ and
+the observation-level standard error of the squared residuals,
+$\widehat{\mathrm{SE}}(\tau)^2
+ = \{\sum_j B_j(\tau) - (\sum_j A_j(\tau))^2/n_{\mathrm{val}}\}
+   /\{n_{\mathrm{val}}(n_{\mathrm{val}}-1)\}$ with
+$n_{\mathrm{val}} = \sum_j m_j^{\mathrm{val}}$; no second pass and no
+row-level exchange is required. The server then selects
 \begin{equation}
 \hat\tau = \max\Big\{\tau \in \mathcal{T} :
   \widehat{\mathrm{MSE}}(\tau) \le
@@ -21,23 +35,36 @@ $m_j^{\mathrm{val}}$ for each candidate, and the server selects
 \hat\bbeta^{\mathrm{ST}} = \soft(\bbeta_R, \hat\tau),
 \label{eq:st}
 \end{equation}
-where $\widehat{\mathrm{MSE}}(\tau)$ is the weighted validation mean squared
-error, $\tau_{\min}$ its minimiser over the grid, and
-$\widehat{\mathrm{SE}}$ its standard error. This is the familiar
-one-standard-error rule applied to a threshold rather than to a penalty; the
-minimum-MSE rule is deliberately \emph{not} used, because validation MSE is
-nearly flat in $\tau$ near zero and selects $\hat\tau \approx 0$, returning
-the dense iterate unchanged. The step costs one additional communication
-round, transmits $2|\mathcal{T}|$ scalars per site instead of a
-$p$-vector, and requires no row-level exchange.
+where $\tau_{\min}$ minimises $\widehat{\mathrm{MSE}}$ over the grid. This is
+the familiar one-standard-error rule applied to a threshold rather than to a
+penalty. The minimum-MSE rule is not used because it selects
+$\hat\tau \approx 0$ and returns the dense iterate unchanged; we report that
+variant (\textsc{FedAvg-ST-min}) so the reader can see the effect of the rule
+rather than take it on trust. Because the one-standard-error rule favours
+sparsity, every baseline in Section~\ref{sec:sim} is reported under both
+rules (Section~\ref{sub:matched}).
 
-Two things should be said plainly about what this does and does not fix.
-It restores sparsity, and Section~\ref{sec:results} shows it recovers a
-large share of the selection accuracy lost to averaging. It does not
-address the optimisation bias of Proposition~\ref{prop:fixed}: thresholding
-a point that is not a minimiser of $F$ does not make it one. It is a
-post-processing device with a clear justification, not a corrected
-algorithm.
+The extra round transmits $3|\mathcal{T}|$ scalars per site rather than a
+$p$-vector. With $|\mathcal{T}| = 40$ and $K = 3$ this is $2.8$~KiB, against
+$14.1$~KiB for one round of coefficient vectors, and we account for the two
+separately in all cost tables.
+
+\subsection{\textsc{FedAvg-P}: proximal aggregation}
+
+\textsc{FedAvg-ST} repairs the output; it does not repair the iteration.
+The natural composite fix is to apply the proximal operator at the server in
+\emph{every} round, $\bbeta_{t+1} \gets \soft(\sum_j w_j \bbeta_{j,t}, \tau)$,
+which is the coordinate-descent analogue of the server-side correction that
+motivates FedDualAvg \citep{yuan2021fco} and the federated dual-averaging
+methods of \citet{bao2022}. The threshold matters: fixing $\tau = \bar\lambda$
+compounds shrinkage across rounds and over-sparsifies badly, so we select
+$\tau$ over a five-point grid $\bar\lambda \cdot \{1, \tfrac12, \tfrac14,
+\tfrac18, \tfrac1{16}\}$ by the same one-standard-error rule on the same
+scalar summaries. We do not implement FedDualAvg itself: it replaces exact
+local coordinate descent with local dual-averaging steps, which changes what
+$E$ means and would make the local-epoch comparison incoherent. A comparison
+at fixed communication budget between the two families is worth doing and we
+do not attempt it here.
 
 \subsection{Comparators}
 
@@ -55,11 +82,16 @@ ridge-regularised least-squares subproblem by a Cholesky factorisation
 computed once, the server soft-thresholds the averaged primal-plus-dual
 variable, and duals are updated locally. By Lemma~\ref{lem:pooled} this
 returns the pooled Lasso solution at $\bar\lambda$ to numerical precision,
-using the same communication pattern (one $p$-vector per site per
-iteration) and the same privacy boundary as
-Algorithm~\ref{alg:fedavg}. It is therefore the right control: it isolates
-the effect of \emph{how} the sites are combined, holding the objective, the
-data and the communication channel fixed.
+using the same communication pattern (one $p$-vector per site per iteration)
+and the same privacy boundary as Algorithm~\ref{alg:fedavg}. It is therefore
+the right control: it isolates the effect of \emph{how} the sites are
+combined, holding the objective, the data and the communication channel
+fixed. Because ADMM inherits its penalty from the local $\lambda_j$, we also
+report \textsc{ADMM-CV}, in which the consensus penalty is selected over a
+$15$-point grid by federated validation, under both selection rules. This
+separates ``exact optimisation'' from ``a fortunate value of
+$\bar\lambda$''---a distinction that turns out to matter
+(Section~\ref{sec:results}).
 
 \paragraph{One-shot averaging.} Each site solves its local problem to
 convergence and the server averages once, the $E \to \infty$, $R = 1$
@@ -69,6 +101,19 @@ extreme of Algorithm~\ref{alg:fedavg}
 \paragraph{Local-only.} The Lasso fitted at the largest site alone, with no
 communication. This is the do-nothing baseline, and it is the relevant one:
 a federated procedure that does not beat it is not worth deploying.
+
+\subsection{Matched tuning rules}
+\label{sub:matched}
+
+Selection metrics are sensitive to how the penalty is chosen, and a
+comparison in which one method is tuned for sparsity and its baselines for
+prediction is not a comparison of aggregation rules. We therefore report
+every non-federated comparator twice: once with the penalty minimising
+validation MSE (the rule used inside the protocol for $\lambda_j$, labelled
+without a suffix) and once with the one-standard-error rule (suffix
+\textsc{-1SE}), which is the rule \textsc{FedAvg-ST} and \textsc{FedAvg-P}
+use for their thresholds. The honest reading of the results is the
+\textsc{-1SE} column; we give both.
 
 \subsection{Reporting conventions}
 
