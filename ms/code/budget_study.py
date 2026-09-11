@@ -154,6 +154,83 @@ def summarize(raw):
     return pd.DataFrame(records)
 
 
+def total_cap_outputs(raw):
+    """Use each method's largest archived checkpoint under a common total cap.
+
+    The cap/rule do not use outcomes: the 100-round selected-vector budget plus
+    DA's five setup/validation scalars per site. Complete candidate trajectories
+    count, as they do in standalone_total_upload_bytes. No interpolation is used.
+    """
+    cap = 100 * 8 * len(MTR) * P + 8 * len(MTR) * (2 + len(RATE_MULTIPLIERS))
+    feasible = raw[(raw.E > 0) & (raw.standalone_total_upload_bytes <= cap)]
+    selected = (feasible.sort_values("rounds")
+                .groupby(["scenario", "rep", "method", "E"], sort=False).tail(1))
+    if len(selected) != raw[raw.E > 0].groupby(["scenario", "rep", "method", "E"]).ngroups:
+        raise ValueError("a method has no archived checkpoint within the total upload cap")
+    summary = summarize(selected)
+    costs = selected.groupby(["scenario", "method", "E", "rounds"])["standalone_total_upload_bytes"].agg(["min", "max"])
+    if (costs["min"] != costs["max"]).any():
+        raise ValueError("total-cap table requires constant cost within a reported group")
+    summary = summary.merge(costs["min"].rename("total_upload_bytes"),
+                            on=["scenario", "method", "E", "rounds"], validate="one_to_one")
+    summary["cap_upload_bytes"] = cap
+    summary["unused_upload_bytes"] = cap - summary.total_upload_bytes
+    n = int(summary.n.min())
+    summary.to_csv(ROOT / "budget_total_cap_summary.csv", index=False)
+    paired = []
+    for (scenario, E), group in selected.groupby(["scenario", "E"]):
+        for metric in ["F1", "objective_gap", "test_mse"]:
+            wide = group.pivot(index="rep", columns="method", values=metric)
+            delta = wide["FedDualAvg-adapted"] - wide["FedAvg-CD-common"]
+            if delta.isna().any():
+                raise ValueError("unpaired records in total-cap comparison")
+            paired.append(dict(scenario=scenario, E=E, metric=metric,
+                               contrast="FedDualAvg-adapted minus FedAvg-CD-common",
+                               mean=delta.mean(), se=delta.std(ddof=1) / np.sqrt(len(delta)), n=len(delta)))
+    paired = pd.DataFrame(paired)
+    paired.to_csv(ROOT / "budget_total_cap_paired.csv", index=False)
+    table = [r"\begin{table}[htbp]", r"\centering\small", r"\setlength{\tabcolsep}{4pt}",
+             r"\caption{Sensitivity analysis under a common total-upload cap of $1{,}440{,}120$ bytes ($1406.37$ KiB) per method, design and $E$. The largest affordable recorded checkpoint is used: CD has $R=100$ and DA has $R=20$. Upload includes every candidate path and standalone setup and validation scalars. Means (Monte Carlo standard errors) over " + str(n) + r" paired replicates. The coarse checkpoint grid leaves unequal unused budgets; actual spending is not matched.}",
+             r"\label{tab:budget-total-cap}", r"\begin{tabular}{llrrrrr}", r"\toprule",
+             r"Design & Method & $E$ & Total KiB & $F_1$ & Objective gap & Test MSE \\", r"\midrule"]
+    for scenario, label in zip(SCENARIOS, ["Independent", "Correlated", "Heterogeneous"]):
+        first = True
+        for method, short in [("FedAvg-CD-common", "CD"), ("FedDualAvg-adapted", "DA")]:
+            for E in E_GRID:
+                row = summary[(summary.scenario == scenario) & (summary.method == method) & (summary.E == E)].iloc[0]
+                values = [f"{row.total_upload_bytes / 1024:.2f}"]
+                values += [f"{row[m+'_mean']:.3f} ({row[m+'_se']:.3f})" for m in ["F1", "objective_gap", "test_mse"]]
+                table.append(f"{label if first else ''} & {short} & {E} & " + " & ".join(values) + r" \\")
+                first = False
+        table.append(r"\addlinespace")
+    table.extend([r"\bottomrule", r"\end{tabular}", r"\end{table}"])
+    (ROOT.parent / "tables" / "budget_total_cap.tex").write_text("\n".join(table) + "\n")
+    docs = ROOT.parents[1] / "docs"
+    docs.mkdir(exist_ok=True)
+    lines = ["# Common total-upload-cap sensitivity analysis", "",
+             "This archived-results analysis applies one cap of 1,440,120 bytes (1406.37 KiB) to each method, design and local-step setting. "
+             "The cap is the 100-round selected-vector budget plus 120 bytes of DA setup and validation scalars. "
+             "The selection rule uses cost only: choose the largest affordable checkpoint in {5, 10, 20, 50, 100}. "
+             "CD therefore uses 100 rounds, and DA uses 20 rounds for each of its three learning-rate candidates. "
+             "Candidate selection still uses validation MSE. No observations are rerun or interpolated.", "",
+             "| Method | Selected rounds | Actual total upload (KiB) | Unused cap (bytes) |", "|---|---:|---:|---:|",
+             "| CD-common | 100 | 1406.2734375 | 96 |", "| Adapted FedDualAvg | 20 | 843.8671875 | 576000 |", "",
+             "Both procedures obey the cap, but their actual spending differs because only the recorded checkpoints are available. "
+             "The analysis does not establish an equal-spending or wall-clock comparison. Local gradient evaluations and CD sweeps also differ.", "",
+             "The supplementary table and `budget_total_cap_summary.csv` contain method-specific means and MCSEs. "
+             "Below, differences are adapted FedDualAvg minus CD-common within each paired seed; parentheses give paired MCSEs.", "",
+             "| Design | E | F1 difference (MCSE) | Objective-gap difference (MCSE) | Test-MSE difference (MCSE) |",
+             "|---|---:|---:|---:|---:|"]
+    for scenario, label in zip(SCENARIOS, ["Independent", "Correlated", "Heterogeneous"]):
+        for E in E_GRID:
+            group = paired[(paired.scenario == scenario) & (paired.E == E)].set_index("metric")
+            values = [f"{group.loc[m, 'mean']:+.4f} ({group.loc[m, 'se']:.4f})" for m in ["F1", "objective_gap", "test_mse"]]
+            lines.append(f"| {label} | {E} | " + " | ".join(values) + " |")
+    lines += ["", f"All {n} seeds per design are retained. Positive F1 differences favour DA; negative objective-gap and test-MSE differences favour DA. "
+              "ST and P are absent from this experiment, so these results do not rank those retrofit procedures against DA.", ""]
+    (docs / "BUDGET_TOTAL_CAP.md").write_text("\n".join(lines))
+
+
 def make_outputs(raw):
     import matplotlib
     matplotlib.use("Agg")
@@ -170,6 +247,7 @@ def make_outputs(raw):
         raise ValueError("a pooled reference does not meet the optimality check")
     summary = summarize(raw)
     summary.to_csv(ROOT / "budget_summary.csv", index=False)
+    total_cap_outputs(raw)
     paired = []
     for (scenario, E, R), group in raw[raw.E > 0].groupby(["scenario", "E", "rounds"]):
         for metric in ["F1", "objective_gap", "kkt_mapping", "test_mse"]:

@@ -2,9 +2,9 @@
 
 Research code, manuscript source, datasets and reproducible results for Keivan Bolouri's study of local coordinate-descent epochs in federated Lasso.
 
-**[Read the revised manuscript](ms/federated_lasso_manuscript.pdf)** · **[Supplementary results](ms/supplementary_results.pdf)** · **[LaTeX source archive](ms/latex_source.zip)** · **[Revision and author-review record](docs/REVISION_NOTES.md)**
+**[Read the manuscript](ms/federated_lasso_manuscript.pdf)** · **[Supplement S1](ms/supplementary_results.pdf)** · **[LaTeX source archive](ms/latex_source.zip)** · **[Revision record](docs/REVISION_NOTES.md)**
 
-The study separates three questions: which variables are selected, how accurately the specified Lasso objective is solved, and how much communication and local computation are required. It compares local and pooled tuning, averaging, server thresholding, consensus ADMM, and an explicitly documented deterministic specialization of FedDualAvg. Results should be interpreted within the tested designs; this repository makes no claim of guaranteed journal acceptance or formal privacy.
+The study diagnoses variable-selection and optimisation problems in coordinate-descent averaging. It separates the effects of local epochs, penalty tuning and aggregation, and reports communication and local computation separately. Adapted FedDualAvg is the established composite-solver comparison; post-fit and per-round thresholding are evaluated as modifications to existing CD workflows. The main comparison matches selected-path uploads and exposes the extra tuning paths. Supplement S1 also reports a common total-upload-cap comparison from the archived runs.
 
 ## Reproduce
 
@@ -34,7 +34,7 @@ Build the manuscript and submission source archive:
 python reproduce.py --build
 ```
 
-The build requires `pdflatex`, `bibtex`, `latexmk` and Poppler's `pdftotext`, with the standard LaTeX article, mathematics, graphics, bibliography and table packages. The source uses ordinary numbered algorithm steps and does not require `algorithm` or `algpseudocode` packages. `--build` also refreshes the displayed word count and produces the supplementary PDF. See [manuscript instructions](ms/README.md) for individual commands and [result definitions](docs/RESULTS.md) for metrics and cost conventions.
+The build requires `pdflatex`, `bibtex`, `latexmk` and Poppler's `pdftotext`, with the standard LaTeX article, mathematics, graphics, bibliography and table packages. The source uses ordinary numbered algorithm steps and does not require `algorithm` or `algpseudocode` packages. `--build` checks the manuscript length and produces both PDFs and a source archive containing their required files. See [manuscript instructions](ms/README.md) for individual commands and [result definitions](docs/RESULTS.md) for metrics and cost conventions.
 
 ## Experiments and files
 
@@ -44,7 +44,7 @@ The build requires `pdflatex`, `bibtex`, `latexmk` and Poppler's `pdftotext`, wi
 | `ms/code/fedlasso.py` | Coordinate-descent, thresholding, validation and ADMM implementations |
 | `ms/code/run_sim.py`, `run_study.py` | Main simulations: 200 replicates in each of three designs |
 | `ms/code/feddualavg.py`, `budget_study.py` | Published-algorithm specialization and communication-budget comparison: 50 replicates per design |
-| `ms/code/diabetes_study.py` | Public diabetes example: 100 prespecified data splits |
+| `ms/code/diabetes_study.py` | Archived diabetes experiment: 100 prespecified splits; excluded from the manuscript |
 | `ms/code/real_data.py`, `eps_sens.py` | Fixed synthetic node-data benchmark and activity-threshold sensitivity |
 | `ms/code/*results*.csv`, `*raw.csv`, `*summary*.csv` | Committed numerical results |
 | `ms/code/*metadata.json`, `data/diabetes/` | Reproduction metadata and public-data provenance |
@@ -57,8 +57,6 @@ The build requires `pdflatex`, `bibtex`, `latexmk` and Poppler's `pdftotext`, wi
 
 The author confirmed that the original node CSVs are **synthetic**. Their original generation procedure, seed and coefficient vector were not supplied with this revision. They are treated as a fixed numerical benchmark, never as an observational application or a known-support simulation. The current main simulations have explicit generators and recorded seeds.
 
-The public diabetes example uses the 442-observation, 10-predictor dataset described by Efron et al. (2004), distributed with scikit-learn. Its source, variables, raw values, hashes and split assignments are documented in [data/diabetes](data/diabetes/). All preprocessing uses training rows only.
+The archived diabetes experiment uses the 442-observation, 10-predictor dataset described by Efron et al. (2004), distributed with scikit-learn. Its source, variables, raw values, hashes and split assignments remain documented in [data/diabetes](data/diabetes/). All preprocessing uses training rows only. This low-dimensional illustration was removed from the article; its code and results are retained for reproducibility.
 
-## Status
-
-This is a revised research manuscript for author review. The revision corrects numerical reporting and adds experiments, but new scientific material and AI-use declarations require the author's independent review before journal submission. See the [revision record](docs/REVISION_NOTES.md). Funding was confirmed by the author as no dedicated funding.
+The [revision record](docs/REVISION_NOTES.md) identifies the changes made after the submission-readiness review and the checks retained from the earlier revision.

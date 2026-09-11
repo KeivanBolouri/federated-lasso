@@ -22,6 +22,32 @@ def python_script(name, *args):
     call(sys.executable, CODE / name, *args)
 
 
+def manuscript_sources():
+    """Collect the local input, bibliography and figure closure of both PDFs."""
+    pending = [MS / "main.tex", MS / "supplement.tex"]
+    sources = set()
+    commands = re.compile(
+        r"\\(input|include|includegraphics|bibliography)\*?(?:\[[^\]]*\])?\s*\{([^}]+)\}")
+    while pending:
+        path = pending.pop().resolve()
+        if not path.is_relative_to(MS.resolve()) or not path.is_file():
+            raise SystemExit(f"Missing or nonlocal manuscript source: {path}")
+        if path in sources:
+            continue
+        sources.add(path)
+        if path.suffix != ".tex":
+            continue
+        source = re.sub(r"(?<!\\)%.*$", "", path.read_text(), flags=re.MULTILINE)
+        for command, names in commands.findall(source):
+            for name in names.split(",") if command == "bibliography" else [names]:
+                target = MS / name.strip()
+                if not target.suffix:
+                    extension = ".bib" if command == "bibliography" else ".pdf" if command == "includegraphics" else ".tex"
+                    target = target.with_suffix(extension)
+                pending.append(target)
+    return sorted(sources)
+
+
 def build():
     for tool in ("latexmk", "pdflatex", "bibtex", "pdftotext"):
         if shutil.which(tool) is None:
@@ -42,16 +68,12 @@ def build():
     shutil.copy2(pdf, MS / "federated_lasso_manuscript.pdf")
     call("latexmk", "-pdf", "-interaction=nonstopmode", "-halt-on-error", "-outdir=build", "supplement.tex", cwd=MS)
     shutil.copy2(MS / "build" / "supplement.pdf", MS / "supplementary_results.pdf")
-    files = [MS / n for n in ("main.tex", "supplement.tex", "numbers.tex", "word_count.tex", "refs.bib")]
-    files += sorted((MS / "sections").glob("*.tex"))
-    files += sorted((MS / "tables").glob("*.tex"))
-    files += sorted((MS / "figures").glob("*.pdf"))
     with zipfile.ZipFile(MS / "latex_source.zip", "w", zipfile.ZIP_DEFLATED) as archive:
-        for path in files:
+        for path in manuscript_sources():
             info = zipfile.ZipInfo(path.relative_to(MS).as_posix(), date_time=(2026, 9, 11, 0, 0, 0))
             info.compress_type = zipfile.ZIP_DEFLATED
             archive.writestr(info, path.read_bytes())
-    print(f"Built manuscript ({count:,} inclusive words), supplementary results, and LaTeX source archive.")
+    print("Built manuscript, supplementary results, and LaTeX source archive.")
 
 
 def main():

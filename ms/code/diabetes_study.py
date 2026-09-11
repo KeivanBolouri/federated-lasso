@@ -221,8 +221,7 @@ def write_table(summary):
              r"each split. Stability is mean pairwise Jaccard overlap between "
              r"a method's selected sets across splits. Neither measures truth recovery. "
              r"Cap is the number of returned fits that reached the 500-round "
-             r"averaging limit without satisfying the stopping criterion. "
-             r"Analysis and table-generation code was developed with AI assistance.}",
+             r"averaging limit without satisfying the stopping criterion.}",
              r"\label{tab:diabetes}",
              r"\begin{tabular}{lrrrrrr}", r"\toprule",
              r"Method & $E$ & Active & $F_1$ & Test MSE (SD) & Stability & Cap \\",

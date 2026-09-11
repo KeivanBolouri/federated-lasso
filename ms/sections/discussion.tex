@@ -1,7 +1,16 @@
 \section{Discussion}
 \label{sec:discussion}
 
-The effect of local epochs on federated Lasso selection depends on the
+This study diagnoses CD averaging rather than introducing a replacement
+for established composite solvers. The common-penalty comparison favours
+adapted FedDualAvg over CD averaging on both objective accuracy and support
+recovery at the reported selected-path budgets. Its additional step-size
+search must be counted when comparing complete procedures. When accurate
+minimisation of the pooled penalised objective is required, these results
+support an established composite method, with consensus ADMM supplying
+another numerically checked reference.
+
+The effect of local epochs on selection within CD averaging depends on the
 aggregation procedure and penalty rule. The orthogonal calculation makes
 one distinction exact: local CD finishes in one sweep, so further local
 epochs have no effect even though averaging can enlarge the selected support.
@@ -15,7 +24,11 @@ post-fit and per-round thresholds introduce additional selection steps.
 Their search spaces differ, and the resulting performance differences
 should not be assigned wholly to one mechanism. Likewise, favourable
 support recovery at an inherited penalty should not be interpreted as a
-universal advantage of a particular solver.
+universal advantage of a particular solver. ST remains useful as an
+inexpensive post-fit sparsification step for a CD workflow; P changes the
+iteration but requires five candidate fits and has no demonstrated
+advantage over FedDualAvg under matched total costs. Their role here is to
+quantify retrofit behaviour, including its prediction and computation costs.
 
 Activity thresholds, numbers selected, and variable identities are distinct
 reporting choices. Sensitivity to the numerical activity threshold should
@@ -48,11 +61,9 @@ selected support. A systematic comparison with stratified or nested tuning
 is outside this study.
 
 The original fixed benchmark cannot validate recovery because its generating
-coefficients and algorithm are unavailable. The public-data illustration
-uses simulated site partitions and does not represent a deployed
-multi-institutional analysis. Repeated splits describe sensitivity within
-that finite dataset, not independent population replications. The public example also includes capped, unconverged averaging iterates,
-which limits their interpretation as fixed points. The
+coefficients and algorithm are unavailable. The article therefore contains
+no observational-data validation of high-dimensional support recovery or
+deployed multi-institutional application. The
 communication-budget comparison is a deterministic specialization of
 FedDualAvg; it does not reproduce every stochastic setting or accelerated
 method in the composite federated literature. Local computation and tuning

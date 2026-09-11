@@ -41,7 +41,6 @@
 \newcommand{\Lloc}{\mathcal{L}}
 
 \input{numbers}
-\input{word_count}
 
 \title{\bfseries Local Epochs, Aggregation and Variable Selection\\
 in Federated Coordinate-Descent Lasso}
@@ -51,8 +50,7 @@ in Federated Coordinate-Descent Lasso}
 \small University of California, Irvine\\
 \small Corresponding author: \texttt{kbolouri@uci.edu}}
 
-\date{September 11, 2026\\[3pt]
-\small Approximate word count, including tables and references: \ManuscriptWordCount}
+\date{September 11, 2026}
 
 \begin{document}
 \maketitle
@@ -67,17 +65,21 @@ in Federated Coordinate-Descent Lasso}
 \input{sections/results}
 \input{sections/budget}
 \input{sections/realdata}
-\input{sections/public_data}
 \input{sections/discussion}
 
 \section*{Data and code availability}
 Code, recorded simulation seeds, raw and summary results, and the fixed
 synthetic benchmark are available at
 \url{https://github.com/KeivanBolouri/federated-lasso}.
-The public diabetes data and their provenance are documented in the same
-repository. Reproduction commands regenerate the numerical outputs and
-manuscript; the original generator for the fixed synthetic benchmark is
-unavailable.
+Reproduction commands regenerate the numerical outputs, manuscript and
+Supplement S1; the original generator and true coefficients for the fixed
+synthetic benchmark are unavailable.
+
+\section*{Supplementary material}
+Supplement S1, \emph{Supplementary numerical results}, contains the complete
+simulation grid in Table S1 and the common total-upload-cap comparison in
+Table S2, including support, prediction and cost summaries.
+It is supplied as a separate PDF with the manuscript source files.
 
 \section*{Funding}
 This research received no dedicated funding.

@@ -3,7 +3,7 @@
 \usepackage{amsmath,amssymb,booktabs,longtable}
 \usepackage[colorlinks=true,urlcolor=blue]{hyperref}
 \renewcommand{\thetable}{S\arabic{table}}
-\title{Supplementary numerical results\\[4pt]\large Local Epochs, Aggregation and Variable Selection\\in Federated Coordinate-Descent Lasso}
+\title{Supplement S1: Supplementary numerical results\\[4pt]\large Local Epochs, Aggregation and Variable Selection\\in Federated Coordinate-Descent Lasso}
 \author{Keivan Bolouri}
 \date{September 11, 2026}
 \begin{document}
@@ -13,4 +13,17 @@ summarises 200 generated datasets. Raw results, selected-fit costs,
 convergence diagnostics and scripts are available at
 \url{https://github.com/KeivanBolouri/federated-lasso}.
 \input{tables/full_results}
+\clearpage
+\section*{Common total-upload cap}
+Table~\ref{tab:budget-total-cap} uses the archived common-penalty experiment
+under one upload cap for both methods, including all learning-rate
+candidates. It is a sensitivity analysis added after the original runs.
+The largest recorded affordable checkpoint is chosen by cost alone:
+100 rounds for CD-common and 20 for adapted FedDualAvg. The latter's
+three paths are all charged. Unequal actual spending reflects unused
+budget on the coarse checkpoint grid, not omitted candidate costs.
+No outcomes are interpolated and no new trajectories are fitted.
+The paired differences and Monte Carlo standard errors appear in
+\texttt{budget\_total\_cap\_paired.csv} in the repository.
+\input{tables/budget_total_cap}
 \end{document}

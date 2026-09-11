@@ -29,6 +29,18 @@ different sparse vectors, penalty selection and the numerical threshold
 used to declare a coefficient active. We examine these components through
 an orthogonal calculation and controlled computational comparisons.
 
+The central conclusion is that changing local epochs is insufficient to
+resolve the aggregation problem. In the common-penalty experiment,
+adapted FedDualAvg achieves much smaller objective gaps and higher
+support-recovery $F_1$ than CD averaging at the displayed training budgets.
+This supports using an established composite solver when the aim is to
+solve the pooled penalised objective. Our thresholding variants instead
+evaluate modifications to an existing CD-averaging workflow: post-fit ST
+adds a small validation exchange, while per-round P requires a separate
+fit for each threshold. We do not propose these variants as replacements
+for FedDualAvg, or claim a direct performance ranking between them and
+FedDualAvg under matched total tuning costs.
+
 \paragraph{Contributions.} Our contributions are as follows.
 
 \begin{enumerate}
@@ -60,8 +72,10 @@ server thresholding (\textsc{FedAvg-ST}), per-round proximal
 aggregation (\textsc{FedAvg-P}), and consensus ADMM with pooled and local
 baselines. Minimum-validation-error and one-standard-error variants
 expose the effect of the selection rule. A communication-budget comparison
-with federated dual averaging places the CD procedures alongside a
-method designed for composite objectives.
+with federated dual averaging shows that an established composite method
+substantially reduces the objective error of common-penalty CD averaging.
+The thresholding study and this solver comparison answer distinct questions;
+they do not jointly constitute a matched comparison of all methods.
 
 \item \textbf{Communication and local work are separate costs.} We report
 both transmitted bytes and local computation, including additional
@@ -94,14 +108,17 @@ coordinate descent, a fixed-penalty null-selection formula, and a
 computational assessment of local epochs under stated tuning and cost
 conventions. The analysis complements established support-recovery and
 stability-selection work \citep{zhaoyu2006,meinshausen2010}; it does not
-provide a new general support-recovery guarantee. The simulation and data
-illustration examine when the behaviour of this particular protocol
-persists beyond its solvable orthogonal case.
+provide a new general support-recovery guarantee. The simulations examine
+the behaviour of this particular protocol beyond its solvable orthogonal
+case. A fixed synthetic benchmark provides an additional illustration of
+agreement between fitted supports; its unknown generating support
+precludes a recovery assessment.
 
 The remainder of the article is organised as follows.
 Section~\ref{sec:setup} fixes notation and states the algorithm.
 Section~\ref{sec:theory} contains the analytical results.
 Section~\ref{sec:method} introduces \textsc{FedAvg-ST} and the comparators.
 Sections~\ref{sec:sim} and~\ref{sec:results} describe and report the Monte
-Carlo study, Section~\ref{sec:budget} compares fixed training budgets, Sections~\ref{sec:realdata} and~\ref{sec:publicdata} present synthetic and public-data illustrations, and
+Carlo study, Section~\ref{sec:budget} compares fixed selected-path upload
+budgets, Section~\ref{sec:realdata} presents the fixed synthetic benchmark, and
 Section~\ref{sec:discussion} discusses limitations.

@@ -4,6 +4,9 @@
 Proposition~\ref{prop:orth} explains why averaging can retain more variables
 than the pooled Lasso. We evaluate two thresholding variants and distinguish
 their selection properties from minimisation of the objective $F$.
+These are retrofits to CD averaging, not new composite optimisation
+algorithms. Section~\ref{sec:budget} separately evaluates adapted
+FedDualAvg as an established alternative for the common-penalty objective.
 
 \subsection{FedAvg-ST: thresholding after convergence}
 
@@ -106,6 +109,11 @@ penalties followed by one-SE server-threshold selection. They are distinct
 two-stage procedures; sharing the name ``one-SE'' does not make their
 search spaces identical. ADMM at inherited $\bar\lambda$ is a fixed-objective
 control, not a one-SE-tuned method.
+Consequently, ST versus FedAvg-1SE measures the performance of two
+different tuning procedures. It does not isolate a server-threshold effect
+at identical local penalties and identical tuning opportunity. Likewise,
+the fixed-penalty ADMM comparison evaluates a solver at an inherited
+penalty; its support performance does not establish a tuning advantage.
 
 \subsection{Metrics and cost conventions}
 
