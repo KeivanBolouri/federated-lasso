@@ -1,0 +1,54 @@
+\section{Discussion}
+\label{sec:discussion}
+
+The question we set out to answer---how many local epochs should a
+federated Lasso take between aggregation rounds---turns out to be less
+well posed than it appears, because the quantity most often used to answer
+it is not measuring what it seems to measure. Comparing active-set size or
+support agreement across $E$ compares dense iterates whose sparsity was
+destroyed by the aggregation rule, and the resulting curve reflects the
+union-of-supports mechanism of Proposition~\ref{prop:orth}(iv) at least as
+much as client drift. Under orthogonal designs, where that mechanism is the
+only one operating, the dependence on $E$ is exactly zero, and the entire
+range of active-set sizes one observes across $E$ in a correlated design is
+therefore attributable to a second, distinct effect.
+
+Three practical recommendations follow. First, do not report support-based
+quantities computed from a plain average of local Lasso fits without saying
+what the aggregation rule does to them; the natural minimum is to report
+sensitivity to the activity threshold $\epsilon$, which we find to be
+substantial. Second, if a sparse consensus model is the deliverable, put a
+selection step where the aggregation happens: the server-side threshold of
+Section~\ref{sec:method} costs one round of scalars and recovers most of
+what averaging loses. Third, if exact consensus is affordable, use it;
+consensus ADMM solves the same objective over the same privacy boundary and
+dominates every averaging variant we tried on support recovery, at a
+communication cost that is higher per problem but entirely predictable.
+
+The communication accounting deserves a similar caution. Rounds are the
+usual currency because latency dominates in cross-device federated
+learning, but in the cross-silo settings that motivate federated
+\emph{statistics}---a handful of hospitals or registries with real
+compute---rounds and local work are both real costs, and they move in
+opposite directions in $E$. A schedule chosen on rounds alone will be the
+schedule that does the most arithmetic.
+
+\paragraph{Limitations.} Our analytical results are exact only for
+orthogonal designs with $p \le \min_j m_j$, a regime disjoint from the
+high-dimensional simulations; the general-design results are a fixed-point
+characterisation rather than a rate, and we do not give a bound on
+$F(\bbeta^\star) - F(\hat\bbeta_F)$ as a function of $E$ and site
+heterogeneity. That bound is the natural next step and would turn the
+empirical gap we report into a design rule. The simulations use Gaussian
+designs and a common $\bbeta^\star$ across sites; genuine coefficient
+heterogeneity, categorical predictors, and non-Gaussian responses are all
+outside what we tested. We do not compare against FedProx
+\citep{li2020fedprox} or SCAFFOLD \citep{karimireddy2020}: both are designed
+for smooth stochastic objectives and their proximal and control-variate
+corrections would need to be re-derived for exact coordinate descent on a
+composite objective, which is a paper of its own. Finally, we make no
+formal privacy claim. Withholding rows is not a privacy guarantee: the
+uploaded coefficient vector, and the support in particular, carries
+information about the local sample \citep{zhu2021}, and quantifying what a
+differentially private version of Algorithm~\ref{alg:fedavg} would cost in
+selection accuracy is left to future work.

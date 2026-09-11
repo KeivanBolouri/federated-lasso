@@ -1,0 +1,85 @@
+\section{A server-side selection step, and exact comparators}
+\label{sec:method}
+
+Proposition~\ref{prop:orth}(iv) identifies a specific defect---the
+aggregation step returns a dense vector---and suggests an equally specific
+remedy: apply the proximal operator of the $\ell_1$ penalty at the server,
+where the aggregation happens.
+
+\subsection{\textsc{FedAvg-ST}}
+
+Let $\bbeta_R$ be the output of Algorithm~\ref{alg:fedavg} after $R$ rounds.
+\textsc{FedAvg-ST} adds a single round in which the server broadcasts a grid
+of candidate thresholds $\tau \in \mathcal{T}$, each site returns the two
+scalars $\sum_i (y_{ji} - x_{ji}^\top \soft(\bbeta_R,\tau))^2$ and its own
+$m_j^{\mathrm{val}}$ for each candidate, and the server selects
+\begin{equation}
+\hat\tau = \max\Big\{\tau \in \mathcal{T} :
+  \widehat{\mathrm{MSE}}(\tau) \le
+  \widehat{\mathrm{MSE}}(\tau_{\min}) + \widehat{\mathrm{SE}}(\tau_{\min})\Big\},
+\qquad
+\hat\bbeta^{\mathrm{ST}} = \soft(\bbeta_R, \hat\tau),
+\label{eq:st}
+\end{equation}
+where $\widehat{\mathrm{MSE}}(\tau)$ is the weighted validation mean squared
+error, $\tau_{\min}$ its minimiser over the grid, and
+$\widehat{\mathrm{SE}}$ its standard error. This is the familiar
+one-standard-error rule applied to a threshold rather than to a penalty; the
+minimum-MSE rule is deliberately \emph{not} used, because validation MSE is
+nearly flat in $\tau$ near zero and selects $\hat\tau \approx 0$, returning
+the dense iterate unchanged. The step costs one additional communication
+round, transmits $2|\mathcal{T}|$ scalars per site instead of a
+$p$-vector, and requires no row-level exchange.
+
+Two things should be said plainly about what this does and does not fix.
+It restores sparsity, and Section~\ref{sec:results} shows it recovers a
+large share of the selection accuracy lost to averaging. It does not
+address the optimisation bias of Proposition~\ref{prop:fixed}: thresholding
+a point that is not a minimiser of $F$ does not make it one. It is a
+post-processing device with a clear justification, not a corrected
+algorithm.
+
+\subsection{Comparators}
+
+We compare against four alternatives, all fitted on identical data.
+
+\paragraph{Pooled Lasso.} The centralised fit on the concatenated sample,
+with its penalty tuned by validation MSE on the concatenated validation
+split. This is the infeasible reference an analyst would use if the data
+could be centralised. Note that it is tuned independently and therefore
+generally uses a penalty different from $\bar\lambda$.
+
+\paragraph{Consensus ADMM.} The alternating direction method of multipliers
+in global consensus form \citep{boyd2011} applied to $F$: each site solves a
+ridge-regularised least-squares subproblem by a Cholesky factorisation
+computed once, the server soft-thresholds the averaged primal-plus-dual
+variable, and duals are updated locally. By Lemma~\ref{lem:pooled} this
+returns the pooled Lasso solution at $\bar\lambda$ to numerical precision,
+using the same communication pattern (one $p$-vector per site per
+iteration) and the same privacy boundary as
+Algorithm~\ref{alg:fedavg}. It is therefore the right control: it isolates
+the effect of \emph{how} the sites are combined, holding the objective, the
+data and the communication channel fixed.
+
+\paragraph{One-shot averaging.} Each site solves its local problem to
+convergence and the server averages once, the $E \to \infty$, $R = 1$
+extreme of Algorithm~\ref{alg:fedavg}
+\citep{lee2017,battey2018}.
+
+\paragraph{Local-only.} The Lasso fitted at the largest site alone, with no
+communication. This is the do-nothing baseline, and it is the relevant one:
+a federated procedure that does not beat it is not worth deploying.
+
+\subsection{Reporting conventions}
+
+A coefficient is called active when $|\hat\bbeta_k| > \epsilon$ with
+$\epsilon = 10^{-4}$; because the aggregated iterate carries many
+small non-zero entries, results for plain averaging are sensitive to
+$\epsilon$ and we report that sensitivity explicitly in
+Section~\ref{sec:results}. Support quality is summarised by precision,
+recall, $F_1$ and the Jaccard index against the true support in simulation,
+and against the pooled Lasso support in the data illustration, where the
+truth is unknown. Estimation quality is $\|\hat\bbeta - \bbeta^\star\|_2$
+and prediction quality is mean squared error on an independent test sample
+of $2000$ observations. Cost is reported on both axes: upload in KiB and
+total coordinate-descent epochs per site.

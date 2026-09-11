@@ -1,0 +1,96 @@
+\section{Setup and algorithm}
+\label{sec:setup}
+
+\subsection{Notation}
+
+There are $K$ sites. Site $j$ holds $X_j \in \R^{m_j \times p}$ and
+$y_j \in \R^{m_j}$, with $m = \sum_{j=1}^K m_j$ and aggregation weights
+$w_j = m_j / m$. Records never leave a site. Write
+$X = (X_1^\top, \dots, X_K^\top)^\top$ and $y$ for the (never materialised)
+pooled data. The local penalised objective at site $j$ is
+\begin{equation}
+\Lloc_j(\bbeta)
+ = \frac{1}{2 m_j}\, \| y_j - X_j \bbeta \|_2^2 + \lambda_j \|\bbeta\|_1 ,
+\qquad \bbeta \in \R^p ,
+\label{eq:local}
+\end{equation}
+with a site-specific penalty $\lambda_j > 0$ selected once, before
+federated fitting, by minimising validation mean squared error on the
+site's own held-out split over a $30$-point logarithmic grid, and then held
+fixed. Writing the penalty on the normalised scale $1/(2m_j)$ keeps
+$\lambda_j$ comparable across sites of different size. The aggregated
+objective the protocol implicitly targets is
+\begin{equation}
+F(\bbeta) = \sum_{j=1}^K w_j \Lloc_j(\bbeta) .
+\label{eq:global}
+\end{equation}
+For a vector $v$ and threshold $t \ge 0$, $\soft(v, t)$ denotes coordinatewise
+soft-thresholding, $\soft(v,t)_k = \sgn(v_k)\max(|v_k| - t, 0)$, which is the
+proximal operator of $t\|\cdot\|_1$ \citep{parikh2014}. We write
+$\bar\lambda = \sum_j w_j \lambda_j$ and $\supp(v) = \{k : v_k \neq 0\}$.
+
+\begin{lemma}[The implied objective is a pooled Lasso]
+\label{lem:pooled}
+With $w_j = m_j/m$,
+\[
+F(\bbeta)
+ = \frac{1}{2m} \| y - X\bbeta \|_2^2 + \bar\lambda \|\bbeta\|_1 .
+\]
+\end{lemma}
+
+\begin{proof}
+$w_j / (2m_j) = 1/(2m)$ for every $j$, so the quadratic terms sum to
+$\frac{1}{2m}\sum_j \|y_j - X_j\bbeta\|_2^2 = \frac{1}{2m}\|y - X\bbeta\|_2^2$,
+and the penalties sum to $(\sum_j w_j \lambda_j)\|\bbeta\|_1$.
+\end{proof}
+
+Lemma~\ref{lem:pooled} is elementary but worth stating, because it fixes the
+benchmark. The protocol below is an algorithm for a completely standard
+problem---the pooled Lasso at penalty $\bar\lambda$---so any discrepancy
+between its output and that minimiser is an algorithmic artefact and not a
+different estimand. Throughout, $\hat\bbeta_F$ denotes the minimiser of
+\eqref{eq:global}.
+
+\subsection{The protocol}
+
+Algorithm~\ref{alg:fedavg} states the procedure studied here. The local
+operator is one or more full cyclic coordinate-descent epochs on
+\eqref{eq:local}, warm-started at the broadcast vector. For coordinate $k$
+at site $j$, with $r = y_j - X_j\bbeta + x_{jk}\bbeta_k$,
+\begin{equation}
+\bbeta_k \;\leftarrow\;
+ \frac{\soft\!\left(x_{jk}^\top r,\; \lambda_j m_j\right)}{\|x_{jk}\|_2^2},
+\label{eq:cd}
+\end{equation}
+the factor $m_j$ appearing because \eqref{eq:local} is written on the
+normalised scale while \eqref{eq:cd} uses unnormalised residuals
+\citep{friedman2010}. One epoch is one sweep over all $p$ coordinates. Let
+$T_j^E : \R^p \to \R^p$ denote the map given by $E$ such epochs at site $j$.
+
+\begin{algorithm}[t]
+\caption{Synchronous federated coordinate-descent Lasso (\textsc{FedAvg-CD})}
+\label{alg:fedavg}
+\begin{algorithmic}[1]
+\State \textbf{input} local data $(X_j, y_j)$, penalties $\lambda_j$, weights
+ $w_j$, local epochs $E$, tolerance $\varepsilon_{\mathrm{tol}}$
+\State $\bbeta_0 \gets 0$
+\For{$t = 0, 1, 2, \dots$}
+  \State server broadcasts $\bbeta_t$
+  \For{each site $j$ \textbf{in parallel}}
+     \State $\bbeta_{j,t} \gets T_j^E(\bbeta_t)$
+      \Comment{$E$ CD epochs on $\Lloc_j$, warm-started at $\bbeta_t$}
+     \State site uploads $\bbeta_{j,t}$
+  \EndFor
+  \State $\bbeta_{t+1} \gets \sum_{j} w_j \bbeta_{j,t}$
+   \Comment{aggregation}
+  \State \textbf{stop} if $\|\bbeta_{t+1} - \bbeta_t\|_2 < \varepsilon_{\mathrm{tol}}$
+\EndFor
+\end{algorithmic}
+\end{algorithm}
+
+Two accounting conventions matter for the comparisons that follow. Upload
+cost is $R \times K \times p \times 8$ bytes after $R$ rounds, since each
+site returns a dense double-precision vector of length $p$. Local
+computation is $R \times E$ coordinate-descent epochs per site. These two
+quantities move in opposite directions as $E$ grows, and
+Section~\ref{sec:results} reports both.

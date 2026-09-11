@@ -1,0 +1,35 @@
+\begin{abstract}
+\noindent
+Federated learning fits a shared model across sites that cannot pool
+raw records. When the scientific target is \emph{which variables matter}
+rather than prediction alone, the natural tool is a sparse regression such
+as the Lasso, and every federated protocol must choose $E$, the number of
+local passes each site takes between aggregation rounds. Larger $E$ buys
+fewer communication rounds at the risk of client drift. We study this
+trade-off for a synchronous federated coordinate-descent Lasso and report a
+finding that changes how such algorithms should be read: the weighted
+average of locally soft-thresholded coefficient vectors is, except in
+degenerate cases, not sparse, and its active set is the union of the local
+active sets rather than the active set of any Lasso fit. We prove this in
+closed form for orthogonal designs, where we also show that the iteration
+terminates after a single round and is therefore entirely insensitive to
+$E$, and we characterise the fixed point of the general iteration as an
+averaged-stationarity condition that does not coincide with stationarity of
+the aggregated objective. Consequently, published comparisons of active-set
+size or support agreement across $E$ measure an artefact of the aggregation
+rule as much as client drift. We propose a one-round remedy, a server-side
+soft-threshold whose level is chosen by federated validation using scalar
+summaries only, and we compare both against consensus ADMM, which minimises
+exactly the same aggregated objective. In a Monte Carlo study spanning
+independent, correlated and heterogeneous site designs, plain averaging
+selects a large fraction of all predictors at every $E$, the server-side
+threshold recovers most of the lost selection accuracy at negligible
+communication cost, and consensus ADMM dominates both when sites are alike, though not
+when they differ, since exact optimisation of a mis-specified common
+penalty is no advantage.
+We also show that ranking schedules by communication rounds alone is
+misleading, since total local computation moves in the opposite direction.
+\end{abstract}
+
+\noindent\textbf{Keywords:} federated learning; Lasso; coordinate descent;
+variable selection; communication efficiency; ADMM; client drift.

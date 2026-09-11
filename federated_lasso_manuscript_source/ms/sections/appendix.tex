@@ -1,0 +1,16 @@
+\section{Additional results}
+\label{app:extra}
+
+Table~\ref{tab:eps} reports the sensitivity of the active-set size to the
+activity threshold $\epsilon$ used to declare a coefficient non-zero. The
+plain average carries a large number of coefficients of very small
+magnitude, so its apparent sparsity is a function of $\epsilon$; the
+thresholded and ADMM solutions have exact zeros and are unaffected.
+
+\input{tables/eps_sensitivity}
+
+Table~\ref{tab:full} gives the complete per-design results underlying
+Section~\ref{sec:results}, including estimation error, prediction error and
+both cost axes, with Monte Carlo standard errors.
+
+\input{tables/full_results}
