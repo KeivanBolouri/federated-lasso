@@ -1,0 +1,105 @@
+\section{Setup and algorithm}
+\label{sec:setup}
+
+\subsection{Notation}
+
+There are $K$ sites. Site $j$ holds $X_j \in \R^{m_j \times p}$ and
+$y_j \in \R^{m_j}$, with $m_j>0$, $m = \sum_{j=1}^K m_j$ and
+aggregation weights $w_j = m_j / m$. Assume that every local predictor
+column has positive squared norm, so the coordinate updates below are
+well defined. Write $X = (X_1^\top, \dots, X_K^\top)^\top$ and $y$ for
+the concatenated data. This notation defines a benchmark; the federated
+updates do not require the records to be pooled. The local penalised
+objective at site $j$ is
+\begin{equation}
+\Lloc_j(\bbeta)
+ = \frac{1}{2 m_j}\, \| y_j - X_j \bbeta \|_2^2 + \lambda_j \|\bbeta\|_1 ,
+\qquad \bbeta \in \R^p ,
+\label{eq:local}
+\end{equation}
+with a site-specific penalty $\lambda_j > 0$ selected once, before
+federated fitting, on the site's own validation split, and then held fixed.
+We compare minimum-validation-error and one-standard-error selection
+rules, as specified in Section~\ref{sec:sim}. The scale $1/(2m_j)$ removes
+the direct dependence of the loss on sample size; predictor and response
+scales still affect the appropriate penalty. The common objective used
+for the optimisation comparison is
+\begin{equation}
+F(\bbeta) = \sum_{j=1}^K w_j \Lloc_j(\bbeta) .
+\label{eq:global}
+\end{equation}
+For a vector $v$ and threshold $t \ge 0$, $\soft(v, t)$ denotes coordinatewise
+soft-thresholding, $\soft(v,t)_k = \sgn(v_k)\max(|v_k| - t, 0)$, which is the
+proximal operator of $t\|\cdot\|_1$ \citep{parikh2014}. We write
+$\bar\lambda = \sum_j w_j \lambda_j$ and $\supp(v) = \{k : v_k \neq 0\}$.
+
+\begin{lemma}[The weighted objective is a pooled Lasso]
+\label{lem:pooled}
+With $w_j = m_j/m$,
+\[
+F(\bbeta)
+ = \frac{1}{2m} \| y - X\bbeta \|_2^2 + \bar\lambda \|\bbeta\|_1 .
+\]
+\end{lemma}
+
+\begin{proof}
+Substitute $w_j=m_j/m$ into~\eqref{eq:global} and sum the quadratic
+terms and penalties separately.
+\end{proof}
+
+Lemma~\ref{lem:pooled} fixes the objective and penalty when comparing
+aggregation with an exact consensus solver. Throughout, $\hat\bbeta_F$
+denotes a minimiser of~\eqref{eq:global}; uniqueness holds under the
+orthogonal assumptions below. A positive value of
+$F(\bbeta)-F(\hat\bbeta_F)$ measures optimisation error for this objective.
+It does not by itself imply worse support recovery or test prediction.
+The averaging protocol need not minimise $F$, as
+Proposition~\ref{prop:fixed} shows.
+
+\subsection{The protocol}
+
+Algorithm~\ref{alg:fedavg} states the procedure studied here. The local
+operator is one or more full cyclic coordinate-descent epochs on
+\eqref{eq:local}, warm-started at the broadcast vector. For coordinate $k$
+at site $j$, with $r = y_j - X_j\bbeta + x_{jk}\bbeta_k$,
+\begin{equation}
+\bbeta_k \;\leftarrow\;
+ \frac{\soft\!\left(x_{jk}^\top r,\; \lambda_j m_j\right)}{\|x_{jk}\|_2^2},
+\label{eq:cd}
+\end{equation}
+the factor $m_j$ appearing because \eqref{eq:local} is written on the
+normalised scale while \eqref{eq:cd} uses unnormalised residuals
+\citep{friedman2010}. One epoch is one sweep over all $p$ coordinates. Let
+$T_j^E : \R^p \to \R^p$ denote the map given by $E$ such epochs at site $j$.
+
+\begin{figure}[tb]
+\centering
+\begin{minipage}{0.98\linewidth}
+\hrule\medskip
+\refstepcounter{algorithm}
+\textbf{Algorithm \thealgorithm. Synchronous federated CD-Lasso}
+\label{alg:fedavg}
+\begin{enumerate}
+\item Input local data $(X_j,y_j)$, fixed penalties $\lambda_j$, weights
+$w_j$, local epochs $E\ge1$, and tolerance $\varepsilon_{\mathrm{tol}}>0$.
+Initialise $\bbeta_0=0$.
+\item At round $t$, the server broadcasts $\bbeta_t$.
+\item Each site in parallel computes
+$\bbeta_{j,t}=T_j^E(\bbeta_t)$ and uploads this coefficient vector.
+\item The server forms $\bbeta_{t+1}=\sum_jw_j\bbeta_{j,t}$.
+\item Stop if $\|\bbeta_{t+1}-\bbeta_t\|_2<\varepsilon_{\mathrm{tol}}$;
+otherwise increase $t$ and repeat from step 2. A finite cap is specified
+for each experiment.
+\end{enumerate}
+\hrule
+\end{minipage}
+\end{figure}
+
+For a single fitted path, upload cost is $R\times K\times p\times8$ bytes
+after $R$ rounds: coefficient vectors are transmitted in a dense
+double-precision representation, including their zero entries. Local
+work is $R\times E$ coordinate-descent epochs per site. These measures
+exclude download traffic and are not wall-clock timings. Tuning that
+requires additional federated training paths adds their communication and
+computation to the total; validation summaries are counted separately. We report both
+upload and local work because fewer rounds need not imply less computation.

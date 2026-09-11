@@ -1,0 +1,16 @@
+\begin{table}[htbp]
+\centering\small
+\caption{False-positive probability in centred orthogonal designs. The simulation columns report the mean fraction of the 12 null coordinates selected, with replicate-level Monte Carlo standard errors in parentheses. FedAvg uses $E=1$; $E=3,20$ select the same coordinates in every replicate.}
+\label{tab:orthogonal-check}
+\begin{tabular}{rrcccc}
+\toprule
+& & \multicolumn{2}{c}{FedAvg} & \multicolumn{2}{c}{Pooled Lasso} \\
+\cmidrule(lr){3-4}\cmidrule(lr){5-6}
+$K$ & $m_j$ & Theory & Simulation (MCSE) & Theory & Simulation (MCSE) \\
+\midrule
+2 & 120 & 0.1906 & 0.1938 (0.0035) & 0.0201 & 0.0182 (0.0013) \\
+3 & 80 & 0.4481 & 0.4477 (0.0045) & 0.0201 & 0.0189 (0.0013) \\
+6 & 40 & 0.9194 & 0.9167 (0.0025) & 0.0201 & 0.0218 (0.0014) \\
+\bottomrule
+\end{tabular}
+\end{table}

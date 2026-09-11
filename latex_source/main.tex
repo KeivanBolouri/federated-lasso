@@ -1,0 +1,98 @@
+%% ---------------------------------------------------------------
+%%  Federated coordinate-descent Lasso: local epochs, communication
+%%  and variable selection.
+%%
+%%  Generic article class.  To convert to the Taylor & Francis
+%%  "interact" template, replace the preamble below with
+%%  \documentclass[largeformat]{interact} and keep \input{sections/*}
+%%  unchanged: no section file depends on the class.
+%% ---------------------------------------------------------------
+\documentclass[11pt]{article}
+\usepackage[letterpaper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{natbib}
+\usepackage[colorlinks=true,citecolor=black,linkcolor=black,urlcolor=black]{hyperref}
+\usepackage{setspace}
+\usepackage{caption}
+\usepackage[section]{placeins}
+\newcounter{algorithm}
+\usepackage{longtable}
+
+\bibliographystyle{apalike}
+\captionsetup{font=small,labelfont=bf}
+
+\newtheorem{proposition}{Proposition}
+\newtheorem{lemma}[proposition]{Lemma}
+\newtheorem{corollary}{Corollary}
+\newtheorem{remark}{Remark}
+\theoremstyle{definition}
+\newtheorem{assumption}{Assumption}
+
+\newcommand{\bbeta}{\beta}
+\newcommand{\bbar}{\bar{\beta}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Prob}{\mathbb{P}}
+\newcommand{\soft}{\mathcal{S}}
+\newcommand{\supp}{\operatorname{supp}}
+\newcommand{\sgn}{\operatorname{sign}}
+\newcommand{\Lloc}{\mathcal{L}}
+
+\input{numbers}
+
+\title{\bfseries Local Epochs, Aggregation and Variable Selection\\
+in Federated Coordinate-Descent Lasso}
+
+\author{Keivan Bolouri\\[2pt]
+\small Department of Statistics, Donald Bren School of Information and Computer Sciences\\
+\small University of California, Irvine, Bren Hall 2029\\
+\small Irvine, CA 92697-1250, USA\\
+\small Corresponding author: \texttt{kbolouri@uci.edu}}
+
+\date{}
+
+\begin{document}
+\maketitle
+
+\input{sections/abstract}
+
+\input{sections/intro}
+\input{sections/setup}
+\input{sections/theory}
+\input{sections/method}
+\input{sections/simulation}
+\input{sections/results}
+\input{sections/budget}
+\input{sections/realdata}
+\input{sections/discussion}
+
+\section*{Data and code availability}
+Code, recorded simulation seeds, raw and summary results, and the fixed
+synthetic benchmark are available at
+\url{https://github.com/KeivanBolouri/federated-lasso}.
+The accompanying source archive includes the scripts, fixed inputs,
+recorded results and orthogonal-design experiment needed to regenerate
+the numerical outputs, manuscript and Supplement S1. The original generator
+and true coefficients for the fixed synthetic benchmark were not supplied.
+
+\section*{Supplementary material}
+Supplement S1, \emph{Supplementary numerical results}, contains the complete
+simulation grid in Table S1, the common total-upload-cap comparison in
+Table S2, and an orthogonal-design illustration in Table S3.
+It is supplied as a separate PDF with the manuscript source files.
+
+\section*{Funding}
+This research received no dedicated funding.
+
+\section*{Disclosure statement}
+The author reports no conflict of interest.
+
+\bibliography{refs}
+
+\clearpage
+\appendix
+\input{sections/appendix}
+
+\end{document}

@@ -1,0 +1,33 @@
+\begin{table}[htbp]
+\centering\small
+\setlength{\tabcolsep}{4pt}
+\caption{Sensitivity analysis under a common total-upload cap of $1{,}440{,}120$ bytes ($1406.37$ KiB) per method, design and $E$. The largest affordable recorded checkpoint is used: CD has $R=100$ and DA has $R=20$. Upload includes every candidate path and standalone setup and validation scalars. Means (Monte Carlo standard errors) over 50 paired replicates. The coarse checkpoint grid leaves unequal unused budgets; actual spending is not matched.}
+\label{tab:budget-total-cap}
+\begin{tabular}{llrrrrr}
+\toprule
+Design & Method & $E$ & Total KiB & $F_1$ & Objective gap & Test MSE \\
+\midrule
+Independent & CD & 1 & 1406.27 & 0.256 (0.013) & 1.695 (0.051) & 29.666 (0.564) \\
+ & CD & 5 & 1406.27 & 0.295 (0.014) & 1.614 (0.054) & 30.314 (0.558) \\
+ & CD & 20 & 1406.27 & 0.298 (0.014) & 1.642 (0.057) & 30.380 (0.559) \\
+ & DA & 1 & 843.87 & 0.695 (0.018) & 0.033 (0.004) & 28.807 (0.630) \\
+ & DA & 5 & 843.87 & 0.759 (0.016) & 0.007 (0.001) & 28.207 (0.654) \\
+ & DA & 20 & 843.87 & 0.760 (0.015) & 0.010 (0.002) & 28.219 (0.651) \\
+\addlinespace
+Correlated & CD & 1 & 1406.27 & 0.235 (0.007) & 1.665 (0.037) & 28.990 (0.518) \\
+ & CD & 5 & 1406.27 & 0.278 (0.008) & 1.530 (0.034) & 29.549 (0.511) \\
+ & CD & 20 & 1406.27 & 0.282 (0.007) & 1.548 (0.035) & 29.588 (0.511) \\
+ & DA & 1 & 843.87 & 0.612 (0.013) & 0.122 (0.009) & 28.890 (0.515) \\
+ & DA & 5 & 843.87 & 0.742 (0.010) & 0.005 (0.000) & 27.578 (0.530) \\
+ & DA & 20 & 843.87 & 0.749 (0.010) & 0.010 (0.001) & 27.641 (0.531) \\
+\addlinespace
+Heterogeneous & CD & 1 & 1406.27 & 0.234 (0.008) & 3.122 (0.086) & 44.771 (0.822) \\
+ & CD & 5 & 1406.27 & 0.277 (0.007) & 2.448 (0.066) & 44.913 (0.804) \\
+ & CD & 20 & 1406.27 & 0.285 (0.007) & 2.475 (0.067) & 44.997 (0.798) \\
+ & DA & 1 & 843.87 & 0.477 (0.022) & 0.119 (0.013) & 44.066 (0.879) \\
+ & DA & 5 & 843.87 & 0.565 (0.027) & 0.069 (0.008) & 43.198 (0.940) \\
+ & DA & 20 & 843.87 & 0.573 (0.029) & 0.093 (0.018) & 43.245 (0.935) \\
+\addlinespace
+\bottomrule
+\end{tabular}
+\end{table}

@@ -1,0 +1,15 @@
+\section{Additional numerical results}
+\label{app:extra}
+
+Table~\ref{tab:eps} varies the activity threshold in the fixed synthetic
+benchmark. All methods can retain exact zeros, and all can lose active
+coordinates when the threshold exceeds the magnitude of a nonzero
+coefficient. Thus threshold sensitivity must be described from the counts,
+not inferred solely from whether the estimator uses soft-thresholding.
+
+\input{tables/eps_sensitivity}
+
+The complete simulation grid is provided in Supplementary Table~S1 and in
+the raw and summary CSV files. These include estimation and prediction
+errors, support metrics, convergence diagnostics, and selected-fit and
+full-selection costs.

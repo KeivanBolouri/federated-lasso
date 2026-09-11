@@ -1,0 +1,38 @@
+\begingroup\footnotesize\setlength{\tabcolsep}{4pt}
+\begin{longtable}{lrrrrrr}
+\caption{Fixed synthetic benchmark ($n=800$, $p=600$, $K=3$). The original generator and true coefficients were not supplied. Agreement is with the pooled minimum-MSE Lasso support (\Srefactive\ variables), not with ground truth. $F$ is the common evaluation objective. Selected epoch counts are shown; the complete grid and costs, including all five P candidates, are supplied in \texttt{code/real\_data\_results.csv}.}\label{tab:real}\\
+\toprule
+Method & $E$ & Active & Precision & Recall & $F_1$ & $F$ \\
+\midrule
+\endfirsthead
+\toprule
+Method & $E$ & Active & Precision & Recall & $F_1$ & $F$ \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+Pooled & --- & 172 & 1.000 & 1.000 & 1.000 & 22.901 \\
+Pooled-1SE & --- & 98 & 0.969 & 0.552 & 0.704 & 22.604 \\
+Local-only & --- & 164 & 0.494 & 0.471 & 0.482 & 27.041 \\
+Local-only-1SE & --- & 83 & 0.639 & 0.308 & 0.416 & 26.015 \\
+One-shot & --- & 299 & 0.415 & 0.721 & 0.527 & 25.858 \\
+ADMM & --- & 117 & 0.983 & 0.669 & 0.796 & 22.545 \\
+ADMM-CV & --- & 172 & 1.000 & 1.000 & 1.000 & 22.909 \\
+ADMM-CV-1SE & --- & 96 & 0.969 & 0.541 & 0.694 & 22.618 \\
+FedAvg & 1 & 402 & 0.371 & 0.866 & 0.519 & 25.518 \\
+FedAvg-ST & 1 & 124 & 0.742 & 0.535 & 0.622 & 24.382 \\
+FedAvg-ST-min & 1 & 402 & 0.371 & 0.866 & 0.519 & 25.518 \\
+FedAvg-P & 1 & 155 & 0.665 & 0.599 & 0.630 & 24.480 \\
+FedAvg & 2 & 376 & 0.386 & 0.843 & 0.529 & 25.160 \\
+FedAvg-ST & 2 & 112 & 0.759 & 0.494 & 0.599 & 24.453 \\
+FedAvg-ST-min & 2 & 376 & 0.386 & 0.843 & 0.529 & 25.160 \\
+FedAvg-P & 2 & 144 & 0.688 & 0.576 & 0.627 & 24.344 \\
+FedAvg & 3 & 350 & 0.403 & 0.820 & 0.540 & 25.233 \\
+FedAvg-ST & 3 & 114 & 0.728 & 0.483 & 0.580 & 24.608 \\
+FedAvg-ST-min & 3 & 350 & 0.403 & 0.820 & 0.540 & 25.233 \\
+FedAvg-P & 3 & 144 & 0.632 & 0.529 & 0.576 & 24.482 \\
+FedAvg & 20 & 304 & 0.408 & 0.721 & 0.521 & 25.768 \\
+FedAvg-ST & 20 & 123 & 0.618 & 0.442 & 0.515 & 25.139 \\
+FedAvg-ST-min & 20 & 304 & 0.408 & 0.721 & 0.521 & 25.768 \\
+FedAvg-P & 20 & 157 & 0.554 & 0.506 & 0.529 & 25.010 \\
+\end{longtable}\endgroup

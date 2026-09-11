@@ -1,0 +1,19 @@
+Dear Editors,
+
+Please consider my manuscript, “Local Epochs, Aggregation and Variable Selection in Federated Coordinate-Descent Lasso,” for publication in the Journal of Statistical Computation and Simulation.
+
+The paper examines how local coordinate-descent epochs, coefficient averaging and penalty selection affect variable selection and computational cost. It combines exact orthogonal-design calculations with simulations and a common-penalty comparison against an adapted FedDualAvg implementation. It distinguishes support recovery, optimisation accuracy and the cost of complete tuning procedures, including the practical role of post-fit and per-round thresholding.
+
+An earlier poster-submission extended abstract described a preliminary version of the fixed-data analysis. The present manuscript extends that work with theoretical results, controlled simulations, solver comparisons and explicit communication accounting. The fixed benchmark is identified as synthetic, and its unknown generating support is not used to assess recovery.
+
+The submission includes the manuscript, a separate numerical supplement and a self-contained source and reproducibility archive. I believe the focus on statistical computation, reproducible simulation and sparse estimation is well suited to the journal.
+
+Thank you for considering the manuscript.
+
+Sincerely,
+Keivan Bolouri
+Department of Statistics
+Donald Bren School of Information and Computer Sciences
+University of California, Irvine
+Bren Hall 2029, Irvine, CA 92697-1250, USA
+kbolouri@uci.edu

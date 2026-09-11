@@ -1,0 +1,133 @@
+\section{Selection steps and comparison methods}
+\label{sec:method}
+
+Proposition~\ref{prop:orth} explains why averaging can retain more variables
+than the pooled Lasso. We evaluate two thresholding variants and distinguish
+their selection properties from minimisation of the objective $F$.
+These are retrofits to CD averaging, not new composite optimisation
+algorithms. Section~\ref{sec:budget} separately evaluates adapted
+FedDualAvg as an established alternative for the common-penalty objective.
+
+\subsection{FedAvg-ST: thresholding after convergence}
+
+Let $\bbeta_R$ be the output of Algorithm~\ref{alg:fedavg}. For each candidate
+$\tau\in\mathcal T$, a site evaluates $\soft(\bbeta_R,\tau)$ on its validation
+data and returns
+\begin{equation}
+A_j(\tau)=\sum_{i=1}^{m_j^{\mathrm{val}}}r_{ji}(\tau)^2,\qquad
+B_j(\tau)=\sum_{i=1}^{m_j^{\mathrm{val}}}r_{ji}(\tau)^4,\qquad
+m_j^{\mathrm{val}},
+\label{eq:scalars}
+\end{equation}
+where $r_{ji}(\tau)=y_{ji}-x_{ji}^{\top}\soft(\bbeta_R,\tau)$.
+The server obtains
+$\widehat{\mathrm{MSE}}(\tau)=\sum_jw_j A_j(\tau)/m_j^{\mathrm{val}}$.
+All experiments use validation shares satisfying
+$w_j=m_j^{\mathrm{val}}/n_{\mathrm{val}}$, where
+$n_{\mathrm{val}}=\sum_jm_j^{\mathrm{val}}$. The pooled observation-level
+standard-error estimate is consequently
+\[
+\widehat{\mathrm{SE}}(\tau)^2=
+\frac{\sum_jB_j(\tau)-(\sum_jA_j(\tau))^2/n_{\mathrm{val}}}
+{n_{\mathrm{val}}(n_{\mathrm{val}}-1)}.
+\]
+For heterogeneous fixed sites this is a pooled one-standard-error heuristic,
+not a site-stratified variance estimator or a calibrated confidence interval.
+The selected threshold is
+\begin{equation}
+\hat\tau=\max\{\tau\in\mathcal T:
+\widehat{\mathrm{MSE}}(\tau)\leq
+\widehat{\mathrm{MSE}}(\tau_{\min})+
+\widehat{\mathrm{SE}}(\tau_{\min})\},\qquad
+\hat\bbeta^{\mathrm{ST}}=\soft(\bbeta_R,\hat\tau),
+\label{eq:st}
+\end{equation}
+where $\tau_{\min}$ minimises validation MSE. The largest eligible threshold
+favours a smaller active set. We also report \textsc{FedAvg-ST-min}, which
+uses $\tau_{\min}$. Neither rule uses true support or independent test data.
+
+Post-fit selection adds one validation exchange. Counting the sample count
+for every candidate gives $3K|\mathcal T|$ uploaded double-precision scalars,
+or $2.81$~KiB for $K=3$ and $|\mathcal T|=40$. Every site must also receive
+the final coefficient vector and grid; downloads are excluded from the
+upload convention.
+
+\subsection{FedAvg-P: thresholding in each round}
+
+The per-round variant uses
+$\bbeta_{t+1}=\soft(\sum_jw_j\bbeta_{j,t},\tau)$.
+For each $\tau$ in $\bar\lambda\{1,1/2,1/4,1/8,1/16\}$, we fit a separate
+trajectory and select the largest threshold within one SE of minimum
+validation error. This is a heuristic sparsification of the CD iteration;
+it does not inherit convergence guarantees for $F$ from FedDualAvg or
+other composite methods \citep{yuan2021fco,bao2022}.
+If candidate $q$ takes $R_q$ rounds, full vector upload is
+$8Kp\sum_{q=1}^5R_q$ bytes and CD work is
+$E\sum_{q=1}^5R_q$ sweeps per site. An additional $0.35$~KiB covers
+validation scalars. The selected fit's cost is retained separately.
+Unlike post-fit ST, selecting P requires multiple complete fits.
+
+\subsection{Comparators}
+
+\paragraph{Pooled and local Lasso.}
+The pooled reference uses all training records and tunes its penalty on the
+pooled validation sample. The local reference uses the largest site alone.
+Both are fitted under minimum-MSE and one-SE penalty selection. Pooled data
+are used for reference computation in this single-machine simulation;
+the federated iteration does not require them.
+
+\paragraph{One-shot averaging.}
+Each site fits its Lasso to convergence, followed by one weighted average.
+This is the large-local-work limiting comparator, with one vector upload
+per site. Both local penalty rules are included. The uncorrected average
+here differs from debiased distributed estimators such as those of
+\citet{lee2017} and \citet{battey2018}.
+
+\paragraph{Consensus ADMM.}
+Consensus ADMM \citep{boyd2011} alternates local ridge updates,
+a server soft-threshold, and local dual updates.
+Each site uploads one primal-plus-dual vector per iteration. By
+Lemma~\ref{lem:pooled}, its target equals the pooled Lasso at
+$\bar\lambda$. We check numerical residuals rather than equating a finite
+iteration with an exact solution. This comparator holds $F$ fixed while
+changing the solver.
+
+\textsc{ADMM-CV} and \textsc{ADMM-CV-1SE} instead tune the common penalty
+over a 15-point validation grid. We compute these paths using the equivalent
+pooled objective. Their statistical performance is reported, but no
+unmeasured federated tuning cost is assigned to these centrally computed paths.
+
+\subsection{Tuning comparisons}
+\label{sub:matched}
+
+The -1SE suffix denotes the largest eligible penalty on the same grid used
+for minimum-MSE tuning. In particular, \textsc{FedAvg-1SE} changes each
+local penalty before averaging, and \textsc{One-shot-1SE} changes each
+converged local fit. These comparisons isolate the local penalty rule
+within an aggregation method. ST and P instead use minimum-MSE local
+penalties followed by one-SE server-threshold selection. They are distinct
+two-stage procedures; sharing the name ``one-SE'' does not make their
+search spaces identical. ADMM at inherited $\bar\lambda$ is a fixed-objective
+control, not a one-SE-tuned method.
+Consequently, ST versus FedAvg-1SE measures the performance of two
+different tuning procedures. It does not isolate a server-threshold effect
+at identical local penalties and identical tuning opportunity. Likewise,
+the fixed-penalty ADMM comparison evaluates a solver at an inherited
+penalty; its support performance does not establish a tuning advantage.
+
+\subsection{Metrics and cost conventions}
+
+A coordinate is active when $|\hat\beta_k|>\epsilon$, with
+$\epsilon=10^{-4}$. Simulation precision, recall, $F_1$, and Jaccard index
+compare this set with known true support. Precision and $F_1$ are set to
+zero for an empty selected model, so all simulation means use all 200
+replicates. Estimation error is $\|\hat\bbeta-\bbeta^\star\|_2$; test MSE
+uses independent observations. When true coefficients are unavailable,
+overlap with a pooled fit measures agreement, not correctness.
+
+Fit-round totals include every P candidate; validation adds one further
+communication round. We distinguish uploaded vectors from validation scalars.
+Downloads, protocol headers, and local penalty-search work are excluded;
+these are not end-to-end runtime measurements. CD epochs quantify work
+within the CD family and do not measure ADMM's factorisation and linear
+solves. No formal privacy guarantee is claimed.

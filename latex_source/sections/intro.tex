@@ -1,0 +1,121 @@
+\section{Introduction}
+\label{sec:intro}
+
+Multi-site statistical analysis is increasingly constrained by data that
+cannot be centralised: electronic health records behind institutional
+firewalls, trials governed by separate data-use agreements, claims
+databases that no single sponsor controls. Federated learning
+\citep{mcmahan2017,kairouz2021} addresses this by exchanging model
+parameters rather than records. A central server broadcasts a current
+parameter vector, each site updates it on its own data, and the server
+aggregates the returned vectors.
+
+Let $E$ denote the number of local passes---here, full coordinate-descent
+(CD) epochs---each site performs between aggregation rounds. Larger $E$
+can reduce communication, but also allows local iterates to move further
+toward different site-specific optima, producing client drift
+\citep{li2020convergence,karimireddy2020}. For the Lasso
+\citep{tibshirani1996}, both local fitting and server aggregation can affect
+which coefficients are exactly zero. Consequently, objective values,
+prediction error and agreement of selected variables can respond
+differently to a change in $E$.
+
+This article studies the choice of $E$ for a synchronous federated
+coordinate-descent Lasso in which each site tunes its own penalty on a
+local validation split and the server aggregates by sample-size weight.
+The question is how to interpret changes in its estimated active set as
+$E$ varies. Such changes can reflect local optimisation, averaging of
+different sparse vectors, penalty selection and the numerical threshold
+used to declare a coefficient active. We examine these components through
+an orthogonal calculation and controlled computational comparisons.
+
+The central conclusion is that changing local epochs is insufficient to
+resolve the aggregation problem. In the common-penalty experiment,
+adapted FedDualAvg achieves much smaller objective gaps and higher
+support-recovery $F_1$ than CD averaging at the displayed training budgets.
+This supports using an established composite solver when the aim is to
+solve the pooled penalised objective. Our thresholding variants instead
+evaluate modifications to an existing CD-averaging workflow: post-fit ST
+adds a small validation exchange, while per-round P requires a separate
+fit for each threshold. Their role is to characterise practical CD
+modifications under the tuning procedures and costs specified below.
+
+\paragraph{Contributions.} Our contributions are as follows.
+
+\begin{enumerate}
+\item \textbf{An exact orthogonal calculation.} Under orthogonal local
+designs, the CD iteration reaches
+$\sum_jw_j\soft(z_j,\lambda_j)$ after one round, independently of $E$
+(Proposition~\ref{prop:orth}). Except for exact cancellations, its support
+is the union of the local supports and contains the pooled Lasso support.
+The calculation identifies exactly why the epoch count has no effect
+in this setting.
+
+\item \textbf{False positives under a fixed penalty.}
+Corollary~\ref{cor:fp} gives an explicit null-selection probability under
+independent Gaussian site statistics and a fixed common penalty. For
+balanced partitions of a fixed sample, this probability strictly increases
+with the number of sites.
+
+\item \textbf{A common objective for comparing solvers.} Sample-size
+weights make the weighted local objective equal to the pooled Lasso
+objective at penalty $\bar\lambda$ (Lemma~\ref{lem:pooled}). The averaged
+fixed-point condition need not imply stationarity of that objective
+(Proposition~\ref{prop:fixed}). Consensus ADMM \citep{boyd2011} supplies
+an optimisation benchmark at the same penalty, separating objective
+accuracy from support recovery.
+
+\item \textbf{Separating tuning from aggregation.} We compare
+server thresholding (\textsc{FedAvg-ST}), per-round proximal
+aggregation (\textsc{FedAvg-P}), and consensus ADMM with pooled and local
+baselines. Minimum-validation-error and one-standard-error variants
+expose the effect of the selection rule. A communication-budget comparison
+with federated dual averaging shows that an established composite method
+substantially reduces the objective error of common-penalty CD averaging.
+The comparison separates optimisation accuracy from the practical
+thresholding study.
+
+\item \textbf{Communication and local work are separate costs.} We report
+both transmitted bytes and local computation, including additional
+federated training paths required for tuning. Increasing $E$ can save communication while
+increasing total local work, so the two measures answer different
+deployment questions.
+\end{enumerate}
+
+\paragraph{Related work.} The local-epoch trade-off is well studied for
+smooth objectives through analyses of local SGD
+\citep{stich2019,li2020convergence} and drift corrections such as FedProx
+\citep{li2020fedprox} and SCAFFOLD \citep{karimireddy2020}.
+Composite and proximal federated methods address nonsmooth regularisation
+\citep{tran2021}. In the statistics literature, communication-efficient
+distributed sparse estimation includes one-shot and surrogate-likelihood
+constructions \citep{lee2017,battey2018,jordan2019} and distributed
+optimisation with consensus \citep{boyd2011,duchi2012,wang2017}.
+
+Closest to this article is the federated composite optimisation
+literature. \citet{yuan2021fco} identify the ``curse of primal averaging'',
+introduce FedDualAvg, and evaluate sparse recovery using precision,
+recall, sparsity density and $F_1$. \citet{bao2022} develop faster
+dual-averaging methods and statistical recovery guarantees, and explicitly
+report support-recovery $F_1$ for sparse linear regression. Thus both the
+averaging mechanism and variable selection as an evaluation target have
+established precedents.
+
+Our contribution combines an explicit calculation for local cyclic
+coordinate descent, a fixed-penalty null-selection formula, and a
+computational assessment of local epochs under stated tuning and cost
+conventions. The analysis complements established support-recovery and
+stability-selection work \citep{zhaoyu2006,meinshausen2010}. The simulations examine
+the behaviour of this particular protocol beyond its solvable orthogonal
+case. A fixed synthetic benchmark provides an additional illustration of
+agreement between fitted supports; its unknown generating support
+precludes a recovery assessment.
+
+The remainder of the article is organised as follows.
+Section~\ref{sec:setup} fixes notation and states the algorithm.
+Section~\ref{sec:theory} contains the analytical results.
+Section~\ref{sec:method} introduces \textsc{FedAvg-ST} and the comparators.
+Sections~\ref{sec:sim} and~\ref{sec:results} describe and report the Monte
+Carlo study, Section~\ref{sec:budget} compares fixed selected-path upload
+budgets, Section~\ref{sec:realdata} presents the fixed synthetic benchmark, and
+Section~\ref{sec:discussion} discusses limitations.

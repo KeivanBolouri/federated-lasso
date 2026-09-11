@@ -1,0 +1,2 @@
+Inclusive PDF text word count: 9916
+Method: whitespace tokens in pdftotext output; includes references, tables, captions and page numbers.

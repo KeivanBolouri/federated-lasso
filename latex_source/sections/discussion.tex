@@ -1,0 +1,79 @@
+\section{Discussion}
+\label{sec:discussion}
+
+This study diagnoses how CD averaging, local epochs and penalty selection
+affect sparse estimation. The common-penalty comparison favours
+adapted FedDualAvg over CD averaging on both objective accuracy and support
+recovery at the reported selected-path budgets. Its additional step-size
+search must be counted when comparing complete procedures. When accurate
+minimisation of the pooled penalised objective is required, these results
+support an established composite method, with consensus ADMM supplying
+another numerically checked reference.
+
+The effect of local epochs on selection within CD averaging depends on the
+aggregation procedure and penalty rule. The orthogonal calculation makes
+one distinction exact: local CD finishes in one sweep, so further local
+epochs have no effect even though averaging can enlarge the selected support.
+For general designs, an averaged fixed point need not minimise the pooled
+Lasso objective. Neither fact implies that every average is dense or that
+its statistical performance is determined by its optimisation gap alone.
+
+The simulation comparisons support reporting tuning choices alongside
+aggregation choices. Local one-SE penalties improve plain averaging, while
+post-fit and per-round thresholds introduce additional selection steps.
+Their search spaces differ, and the resulting performance differences
+should not be assigned wholly to one mechanism. Likewise, favourable
+support recovery at an inherited penalty should not be interpreted as a
+universal advantage of a particular solver. ST remains useful as an
+inexpensive post-fit sparsification step for a CD workflow; P changes the
+iteration but requires five candidate fits and has no demonstrated
+advantage over FedDualAvg under matched total costs. Their role here is to
+quantify retrofit behaviour, including its prediction and computation costs.
+
+Activity thresholds, numbers selected, and variable identities are distinct
+reporting choices. Sensitivity to the numerical activity threshold should
+be shown, and a nearly constant number of selected variables should not be
+called stable support without checking the identities. The fixed synthetic
+benchmark illustrates this distinction: thresholding makes the size curve
+flatter while its agreement with a pooled reference varies more with $E$.
+Where a generating support is unavailable, such agreement remains a
+descriptive comparison between estimators.
+
+Communication accounting must include additional federated fits required
+for tuning. Post-fit thresholding is inexpensive under the stated upload
+convention; selecting a per-round threshold requires several complete
+trajectories. Local CD work and uploaded bytes can move in opposite
+directions as $E$ changes. Neither measure alone establishes a preferred
+schedule, especially when different algorithm families perform different
+local computations or use different stopping criteria.
+
+\paragraph{Limitations.}
+The exact support calculations require orthogonal local designs with
+$p\le\min_jm_j$, outside the high-dimensional simulations. The
+general-design fixed-point result supplies no convergence rate or
+nonasymptotic bound linking $E$ to support error. The main study uses one
+sample size, one sparsity level, three sites, Gaussian designs and a shared
+coefficient vector. It does not establish uniform performance over other
+site counts, signal strengths, coefficient heterogeneity or response models.
+The observation-level one-SE rule is a tuning heuristic, especially with
+heterogeneous fixed sites; it is not uncertainty quantification for the
+selected support. A systematic comparison with stratified or nested tuning
+is outside this study.
+
+The original fixed benchmark cannot validate recovery because its generating
+coefficients and generation procedure are unavailable. The article therefore contains
+no observational-data validation of high-dimensional support recovery or
+deployed multi-institutional application. The
+communication-budget comparison is a deterministic specialisation of
+FedDualAvg; it does not reproduce every stochastic setting or accelerated
+method in the composite federated literature. The common-penalty solver
+comparison and the locally tuned thresholding study use different search
+spaces; they do not establish a ranking of ST, P and FedDualAvg under
+matched tuning and total costs. Local computation also differs between
+the solver families.
+
+Finally, keeping records at a site does not provide a formal privacy
+guarantee. Parameters and scalar summaries may reveal sample information
+\citep{zhu2021}. The experiments measure algorithmic and statistical
+behaviour, not differential privacy, secure aggregation, or operational
+network performance.

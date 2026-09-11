@@ -1,0 +1,234 @@
+{
+  "main_seed_coverage": {
+    "passed": true,
+    "raw_rows": 29400,
+    "groups": 147,
+    "seeds_per_group": 200,
+    "blocks": [
+      "5000\u20135066 (67)",
+      "6000\u20136066 (67)",
+      "7000\u20137065 (66)"
+    ]
+  },
+  "budget_clean_regeneration": {
+    "tables/budget_main.tex": {
+      "byte_identical": true,
+      "sha256": "f93ddd85f2bc9f695d7a5b2086706fe504acc3a4a4151505a894d7a0a1fe85a4"
+    },
+    "tables/budget_total_cap.tex": {
+      "byte_identical": true,
+      "sha256": "abf6e06ac464746ffd4fd4eca709dbb5bb4f152b563a4a969006a36ea611fc0f"
+    },
+    "tables/budget_description.tex": {
+      "byte_identical": true,
+      "sha256": "1fe8da407bef5b3c049b9f373f4a92c8a49b5a241db95867b1abe6474b42ce1e"
+    },
+    "code/budget_summary.csv": {
+      "byte_identical": true,
+      "sha256": "28f8e97a6e0c02a1215bbb7441a75ef568e2c4e68a0545414552c3b360d1aa2f"
+    },
+    "code/budget_total_cap_summary.csv": {
+      "byte_identical": true,
+      "sha256": "3354962d2c3fae476bad771182a2d8be7a4c6b0c2176a08ee421c837a50660fd"
+    },
+    "code/budget_paired.csv": {
+      "byte_identical": true,
+      "sha256": "4e64ad20fbbbc62fa6371b314823b3edbee6aef40d626c6631063460afa96d13"
+    },
+    "code/budget_total_cap_paired.csv": {
+      "byte_identical": true,
+      "sha256": "d57cdf54717495855ab07b7a0c42649d2c839bd89d7b79930552a03c669f0b33"
+    }
+  },
+  "budget_seed_coverage": {
+    "raw_rows": 4650,
+    "replicates_per_group": 50,
+    "groups": 93
+  },
+  "communication_claims": {
+    "FedAvg-CD-common": {
+      "R100_total_kib": 1406.2734375
+    },
+    "FedDualAvg-adapted": {
+      "R100_total_kib": 4218.8671875
+    },
+    "selected_R100_kib": 1406.25,
+    "FedAvg-ST_validation_kib": 2.8125,
+    "FedAvg-ST-min_validation_kib": 2.8125,
+    "FedAvg-P_validation_kib": 0.3515625
+  },
+  "total_cap_claims": {
+    "cap_bytes": 1440120,
+    "cap_kib": 1406.3671875,
+    "CD_actual_kib": 1406.2734375,
+    "DA_actual_kib": 843.8671875,
+    "paired_F1_range": [
+      0.24295019774005933,
+      0.4669926003847315
+    ],
+    "paired_cells": [
+      {
+        "scenario": "Correlated",
+        "E": 1,
+        "mean": 0.3765029430672316,
+        "se": 0.00949381486125456
+      },
+      {
+        "scenario": "Correlated",
+        "E": 5,
+        "mean": 0.4640345364547735,
+        "se": 0.008688906663475967
+      },
+      {
+        "scenario": "Correlated",
+        "E": 20,
+        "mean": 0.4669926003847315,
+        "se": 0.008830351638664653
+      },
+      {
+        "scenario": "Heterogeneous",
+        "E": 1,
+        "mean": 0.24295019774005933,
+        "se": 0.024672214586653717
+      },
+      {
+        "scenario": "Heterogeneous",
+        "E": 5,
+        "mean": 0.2873003234530006,
+        "se": 0.03060812729666688
+      },
+      {
+        "scenario": "Heterogeneous",
+        "E": 20,
+        "mean": 0.2887116034773731,
+        "se": 0.03228592739299952
+      },
+      {
+        "scenario": "IID",
+        "E": 1,
+        "mean": 0.43876079429984494,
+        "se": 0.018769901239740226
+      },
+      {
+        "scenario": "IID",
+        "E": 5,
+        "mean": 0.46373367447796454,
+        "se": 0.020699197260469576
+      },
+      {
+        "scenario": "IID",
+        "E": 20,
+        "mean": 0.4618264925196191,
+        "se": 0.020542338013930718
+      }
+    ]
+  },
+  "fixed_benchmark_claims": {
+    "FedAvg_objective_minimising_E": 2,
+    "minimum_objective": 25.159660935120243,
+    "ADMM_objective_gap_percent": 13.186323429070987,
+    "E1_E20_rounds": [
+      28.0,
+      6.0
+    ],
+    "E1_E20_upload_kib": [
+      393.75,
+      84.375
+    ],
+    "added_E2_rows": [
+      {
+        "method": "FedAvg",
+        "active": 376,
+        "precision": 0.3856382978723404,
+        "recall": 0.8430232558139535,
+        "F1": 0.5291970802919708,
+        "obj": 25.159660935120243
+      },
+      {
+        "method": "FedAvg-ST",
+        "active": 112,
+        "precision": 0.7589285714285714,
+        "recall": 0.4941860465116279,
+        "F1": 0.5985915492957746,
+        "obj": 24.45255603829426
+      },
+      {
+        "method": "FedAvg-ST-min",
+        "active": 376,
+        "precision": 0.3856382978723404,
+        "recall": 0.8430232558139535,
+        "F1": 0.5291970802919708,
+        "obj": 25.159660935120243
+      },
+      {
+        "method": "FedAvg-P",
+        "active": 144,
+        "precision": 0.6875,
+        "recall": 0.5755813953488372,
+        "F1": 0.6265822784810127,
+        "obj": 24.34401751619572
+      }
+    ]
+  },
+  "node_checksums": {
+    "all_12_passed": true,
+    "sha256": {
+      "node1_X_train.csv": "21ece477f312eff8aa53c8f63042288d0993289f1d4b7364f806db79bad80677",
+      "node1_X_val.csv": "88a3fd89658cc0d6abb4a5a0bd051219649f9adee3049c80c45efa6cf8b7a6ee",
+      "node1_y_train.csv": "4ae70535c9166acc1dcc34248ea17c1d443b2b33c8fb2da8eb2f5cea41b9c7d1",
+      "node1_y_val.csv": "e73b02e890d5fa462353c2a5c75d036262b33338dad3ae71f28027008cb757a2",
+      "node2_X_train.csv": "49818fe26c71b8fbfbb9cf1c836197520b5d4c847d0125ca01845a555da400ad",
+      "node2_X_val.csv": "2ae679ebb0dbe73224bc0c2b0088531e584b8edbbbc89ae59ea5c22598c8722d",
+      "node2_y_train.csv": "db2c93ec4ff15ff9a1692ba024ddb7f4e58d0aca75db26954bdbc7233925e086",
+      "node2_y_val.csv": "46c8a31d28698c04e9e43f95de3d1fa9a9ad2319ebed77f93cc09a1034d77627",
+      "node3_X_train.csv": "ebb68e14578896a1b541b071c31f6f9688a4c8f64b27829919058f48dfb30ece",
+      "node3_X_val.csv": "fd80a5dad8c2922f9b34d2c34b9389b8894a8c011494305c992b0efa453872f0",
+      "node3_y_train.csv": "47c95a4873a1817348c15c1a3fc63faa4a0fe648c84543dc4aba1bf4dc4dfbeb",
+      "node3_y_val.csv": "cc6afc4aec3d9dbe67a214b0f3204fde54d4582a4a8d59637f09a7558f77e250"
+    }
+  },
+  "fresh_budget_replicate": {
+    "scenario": "IID",
+    "seed": 5000,
+    "rows_compared": 31,
+    "numeric_columns": 21,
+    "maximum_absolute_difference": 1.7763568394002505e-14,
+    "tolerance": "rtol=1e-10, atol=1e-8",
+    "seconds": 4.62744320999991
+  },
+  "main_clean_regeneration": {
+    "numbers.tex": {
+      "byte_identical": true,
+      "sha256": "b71f9c2532166f1aa2ae2ae384e01f055c2437cb9016b07a95082fdadee7eb55"
+    },
+    "tables/main_results.tex": {
+      "byte_identical": true,
+      "sha256": "681e998ab259b1be8957bd1b673cd02e2486c208a1bdb09bc6e0d4ccf1d89c1f"
+    },
+    "tables/real_data.tex": {
+      "byte_identical": true,
+      "sha256": "a7a61a56913f92370e1c5dd618e25a2356eed308bfd50f9fbf86768f04135524"
+    },
+    "tables/full_results.tex": {
+      "byte_identical": true,
+      "sha256": "7fa37413235c018f4231937fdddc876c610e3020b345d8ac4dbffa07e2bacfa1"
+    },
+    "tables/paired_epochs.tex": {
+      "byte_identical": true,
+      "sha256": "230b40864fb9d2a90dd2174084e9c64746a79abf2267a6acaf693c5be01c3325"
+    },
+    "tables/eps_sensitivity.tex": {
+      "byte_identical": true,
+      "sha256": "8ee4749f556d150ad5b25b70de7d59d0ed2e0dba9331e3675446f080f9d09ef8"
+    },
+    "code/sim_summary_new.csv": {
+      "byte_identical": true,
+      "sha256": "13f5c1dadaa6649f00d9ba1561b42d4826a0dc50717c0d7788970a791a44e0c6"
+    },
+    "code/paired_epoch_results.csv": {
+      "byte_identical": true,
+      "sha256": "c00ed26a63f416d2f7e0fcf77de057b0240e4a6475f4153f4cb7f1e14cd1209f"
+    }
+  },
+  "source_node_files_match_archive": true
+}

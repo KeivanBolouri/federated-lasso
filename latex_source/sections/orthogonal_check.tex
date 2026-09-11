@@ -1,0 +1,25 @@
+\section*{Orthogonal-design illustration}
+This separate experiment illustrates Proposition~2 and Corollary~1 of the
+main manuscript under their stated assumptions. We fix $m=240$, $p=12$,
+$\beta^\star=0$, $\sigma=1$ and the common penalty $\lambda=0.15$, with
+balanced partitions $K\in\{2,3,6\}$. At each site, QR decomposition of an
+intercept column and Gaussian columns gives a fixed centred design with
+$X_j^\top X_j=m_j I_p$; here $p<m_j$. For each $K$, independent Gaussian
+responses $y_j\sim N(0,I_{m_j})$ generate 1,000 replicates conditional on
+those designs. No penalty tuning is performed.
+
+Table~\ref{tab:orthogonal-check} compares the corollary's probabilities
+with the mean fraction of null coordinates selected. Monte Carlo standard
+errors are the sample standard deviations of the replicate-level
+fractions divided by $\sqrt{1000}$. Support means an exactly non-zero
+coefficient, as in the corollary, rather than the positive threshold used
+in the main simulations. The theoretical false-positive probability
+increases with $K$, whereas the pooled probability remains constant.
+
+The existing coordinate-descent implementation gives the same support at
+$E=1,3,20$ in every replicate and terminates within two rounds. Maximum
+coefficient differences across these schedules, from the closed-form
+solutions, and in additional non-zero-start checks are below $10^{-12}$.
+This connects the theory to an experiment satisfying its hypotheses; it
+does not extend the corollary to tuned penalties or nonorthogonal designs.
+\input{tables/orthogonal_check}

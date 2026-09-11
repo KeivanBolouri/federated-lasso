@@ -1,0 +1,60 @@
+\section{A fixed synthetic three-site benchmark}
+\label{sec:realdata}
+
+The supplied node files are synthetic. We retain
+this fixed benchmark with 800 training and 200 validation observations,
+600 predictors, and site sizes $(400,240,160)$ and $(100,60,40)$,
+respectively. Its original generation procedure, seed and coefficient
+vector were not supplied, so the generating support cannot be evaluated.
+The matrices are used without further preprocessing. Their unknown
+generation details preclude claims about the site distributions.
+The original files and their SHA-256 checksums are retained with the code,
+so this analysis can be repeated from the fixed inputs even though new
+datasets from the original generator cannot be reproduced.
+This is a descriptive computational example, not an observational application.
+Agreement refers to the pooled minimum-MSE Lasso support, not correctness.
+
+Local penalties are $(\Slamone,\Slamtwo,\Slamthree)$, giving
+$\bar\lambda=\Slambar$. The pooled reference selects penalty
+$\Slampooled$ and retains \Srefactive\ predictors.
+
+\input{tables/real_data}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\textwidth]{figures/fig3_realdata.pdf}
+\caption{Fixed synthetic benchmark: active-set size (left), agreement
+with pooled support (middle), and evaluation objective (right). Dashed
+lines denote ADMM at $\bar\lambda$, solved to numerical tolerance.
+A flatter size curve does not imply more stable variable identities.}
+\label{fig:real}
+\end{figure}
+
+At $E=1$, FedAvg retains \Sfedactive\ predictors with agreement
+$F_1=\SfedFone$, compared with \SlocalFone\ for the largest-site fit.
+ST retains \Sstactive\ predictors with $F_1=\SstFone$; P retains
+\Spactive\ with $F_1=\SpFone$. ADMM at $\bar\lambda$ retains
+\Sadmmactive\ and gives $F_1=\SadmmFone$.
+ADMM-CV under minimum-MSE selection has the same support as the pooled
+reference in this run, but slightly different coefficients and penalty.
+The pooled-objective identity guarantees equal solutions only at equal
+penalties. Neither support agreement nor its increase validates the
+unknown generating support. Pooled one-SE tuning retains \SpoolseAct\
+predictors, illustrating the dependence of the reference itself on tuning.
+
+Thresholding reduces variation in active-set size across $E$, while ST's
+agreement declines from \SstFone\ at $E=1$ to \SstFtwenty\ at
+$E=20$. Its $F_1$ range is larger than that of plain averaging. Thus a
+flatter size curve cannot be interpreted as stability of the selected
+variables, and this one benchmark cannot establish the cause.
+
+ADMM attains $F=\Sadmmobj$, versus \Sfedobj\ for FedAvg at $E=1$:
+a gap of \Sgappct\ for the specified common objective. The FedAvg
+objective is smallest at $E=2$ (\Sfedobjtwo) and reaches
+\Sfedobjtwenty\ at $E=20$. Meanwhile rounds fall from \Sroundsone\
+to \Sroundstwenty, upload from \Skibone\ to \Skibtwenty~KiB,
+and local CD work increases from \Sepochsone\ to \Sepochstwenty\
+sweeps per site. These are separate optimisation and cost comparisons.
+P's released cost totals include all five threshold candidates; its
+selected-fit costs are also supplied. No distributed tuning cost is
+assigned to the centrally evaluated ADMM-CV paths.

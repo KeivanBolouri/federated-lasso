@@ -1,0 +1,128 @@
+\section{Simulation results}
+\label{sec:results}
+
+Table~\ref{tab:main} summarises the three designs; the full epoch grid and
+cost accounting appear in Supplementary Table~S1. All means include 200
+replicates per design. Figure~\ref{fig:support} separates changes in
+selection quality from changes in the number of selected variables.
+
+\input{tables/main_results}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\textwidth]{figures/fig1_support.pdf}
+\caption{True-support $F_1$ (top) and active-set size (bottom) versus local
+CD epochs. Error bars are Monte Carlo standard errors. FedAvg uses local
+minimum-MSE penalties, FedAvg-1SE uses local one-SE penalties, and ST/P
+select a server threshold by one SE after minimum-MSE local tuning.
+ADMM uses inherited $\bar\lambda$; the other horizontal references use
+one-SE penalty selection. The true support contains 30 of 600 variables.}
+\label{fig:support}
+\end{figure}
+
+\subsection{Averaging and local penalty selection}
+
+With minimum-MSE local penalties, FedAvg selects \MIndFedAct,
+\MCorFedAct, and \MHetFedAct\ variables at $E=1$ in the independent,
+correlated, and heterogeneous designs. Its recalls are \MIndFedRec,
+\MCorFedRec, and \MHetFedRec, but precisions are only \MIndFedPrec,
+\MCorFedPrec, and \MHetFedPrec. The average retains substantially more
+variables than the true model, consistent with support enlargement
+through aggregation.
+
+Increasing $E$ from 1 to 20 reduces active-set size by \MIndActDrop,
+\MCorActDrop, and \MHetActDrop, and increases $F_1$ from \MIndFedF\ to
+\MIndFedTF, \MCorFedF\ to \MCorFedTF, and \MHetFedF\ to \MHetFedTF.
+The large-$E$ results approach one-shot averaging, whose $F_1$ values are
+\MIndOneF, \MCorOneF, and \MHetOneF. The Gram matrices are nonorthogonal, the site fits differ, and the
+aggregation map changes with $E$; these effects occur together.
+
+Changing the local penalty rule improves averaging without adding a server
+threshold. FedAvg-1SE gives $F_1=\MIndFedSeF$, \MCorFedSeF, and
+\MHetFedSeF\ at $E=1$, and \MIndFedSeTF, \MCorFedSeTF, and
+\MHetFedSeTF\ at $E=20$. One-shot-1SE gives \MIndOneSeF,
+\MCorOneSeF, and \MHetOneSeF. These controls show why a comparison
+between prediction-tuned averaging and sparsity-favouring thresholding
+cannot attribute the entire difference to aggregation alone.
+
+\subsection{Thresholding, prediction and epoch effects}
+
+FedAvg-ST attains $F_1=\MIndStF$ (MCSE \MIndStSe), \MCorStF\
+(\MCorStSe), and \MHetStF\ (\MHetStSe) at $E=1$, with active-set
+sizes \MIndStAct, \MCorStAct, and \MHetStAct. FedAvg-P attains
+\MIndProxF, \MCorProxF, and \MHetProxF\ at $E=1$, rising to
+\MIndProxTF, \MCorProxTF, and \MHetProxTF\ at $E=20$.
+The two thresholding procedures therefore have different epoch responses.
+
+Table~\ref{tab:paired} quantifies these effects using within-replicate
+contrasts. ST has a modest decline in the homogeneous designs that is
+resolved relative to its paired Monte Carlo uncertainty, while the
+heterogeneous-design contrast is much smaller. P has positive contrasts
+in all three designs. Thresholded selection therefore remains sensitive to $E$. Mean $F_1$
+contrasts describe recovery quality, while within-replicate agreement
+requires comparing the selected variable identities.
+
+\input{tables/paired_epochs}
+
+Selection gains can come with increased estimation and prediction error.
+For example, in the independent design at $E=1$, moving from FedAvg to ST
+changes coefficient error from \MIndFedErr\ to \MIndStErr\ and test MSE
+from \MIndFedMse\ to \MIndStMse\ (Supplementary Table~S1). The preferred estimator therefore
+depends on whether variable selection, estimation, or prediction is the
+primary objective. These metrics should be reported together.
+
+\subsection{Optimisation accuracy and statistical performance}
+
+Pooled minimum-MSE tuning gives $F_1=\MIndPoolF$, \MCorPoolF, and
+\MHetPoolF, compared with \MIndPoolSeF, \MCorPoolSeF, and
+\MHetPoolSeF\ under one-SE tuning. The corresponding ADMM-CV values
+are \MIndAdmmCvF, \MCorAdmmCvF, and \MHetAdmmCvF, versus
+\MIndAdmmCvSeF, \MCorAdmmCvSeF, and \MHetAdmmCvSeF\ with one SE.
+The tuning rule can change support recovery more than the epoch contrasts
+considered here.
+
+ADMM at the inherited penalty gives $F_1=\MIndAdmmF$, \MCorAdmmF,
+and \MHetAdmmF. Its favourable selection results in the homogeneous
+designs depend partly on the inherited penalty. In the heterogeneous
+design, retuning the common penalty by one SE improves $F_1$ from
+\MHetAdmmF\ to \MHetAdmmCvSeF. This does not establish that a common
+penalty is intrinsically inadequate for heterogeneous sites. In particular,
+ST's threshold is also common to all coordinates and sites, and the present
+experiments do not isolate a site-adaptation mechanism.
+
+A converged pooled Lasso minimises its specified penalised training
+objective. It does not necessarily maximise $F_1$ or minimise test error.
+Consequently a thresholded estimator can outperform it on a statistical
+metric while having a larger value of $F$.
+
+\subsection{Communication and local work}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\textwidth]{figures/fig2_cost.pdf}
+\caption{FedAvg upload (solid, left axis) and CD sweeps per site (dashed,
+right axis), averaged over 200 replicates. These are training-path costs,
+excluding initial local penalty search and downloads.}
+\label{fig:cost}
+\end{figure}
+
+For minimum-MSE FedAvg in the independent design, increasing $E$ from 1
+to 20 reduces rounds from \MIndRoundsOne\ to \MIndRoundsTwenty,
+but increases CD work per site from \MIndEpochsOne\ to
+\MIndEpochsTwenty. The correlated and heterogeneous designs also
+show this trade-off (\MCorEpochsOne\ to \MCorEpochsTwenty, and
+\MHetEpochsOne\ to \MHetEpochsTwenty\ CD sweeps, respectively).
+A communication-efficient schedule need not be computation-efficient.
+
+Post-fit ST adds only \MIndStScalar~KiB of validation scalars to its
+underlying fit. P instead requires all five candidate trajectories. In
+the independent design at $E=1$, its selected fit averages
+\MIndProxSelectedRoundsOne\ rounds, whereas all candidates total
+\MIndProxAllRoundsOne\ rounds and \MIndProxUploadOne~KiB including
+validation summaries. At $E=20$ these totals are
+\MIndProxAllRoundsTwenty\ rounds and \MIndProxUploadTwenty~KiB.
+Reporting only the selected P fit would materially understate the cost
+of obtaining that estimator. ADMM uses \MIndAdmmRounds,
+\MCorAdmmRounds, and \MHetAdmmRounds\ rounds at its stricter residual
+tolerance; differing stopping criteria must be considered when interpreting
+these costs.

@@ -1,0 +1,80 @@
+\section{Simulation study}
+\label{sec:sim}
+
+\subsection{Data-generating process}
+
+Each replicate draws $\bbeta^\star\in\R^{600}$ with 30 nonzero entries
+at uniformly sampled positions. Their signs are independent and equally
+likely, and their magnitudes are uniform on $[0.4,1.2]$. The three sites
+have training sizes $(400,240,160)$ and validation sizes $(100,60,40)$.
+Thus $m=800$ and $p=600>m_j$ at every site. Local Lasso fits remain
+well-defined, although a full-rank unpenalised local fit is unavailable.
+Responses satisfy $y_j=X_j\bbeta^\star+\epsilon_j$.
+
+\begin{description}
+\item[Independent.] Design entries are independent standard normal.
+\item[Correlated.] Rows have AR(1) Gaussian covariance with correlation $0.5$.
+\item[Heterogeneous.] Site correlations are $(0,0.4,0.7)$, design scale
+ factors $(1,1.4,0.7)$, and noise scale multipliers $(1,1.5,0.8)$.
+ The coefficient vector remains common across sites.
+\end{description}
+
+Let $v_j$ be the realised variance of the training signal
+$X_j\bbeta^\star$, calculated with denominator $m_j$. Gaussian noise has
+standard deviation $\sqrt{v_j}$ in the homogeneous designs and
+$c_j\sqrt{v_j}$ in the heterogeneous design, with $c=(1,1.5,0.8)$.
+The baseline signal-to-noise ratio is one before these noise multipliers.
+Training and validation responses share the site noise scale.
+Aggregation weights are $(0.5,0.3,0.2)$.
+
+The independent test sample has 2000 observations. Its design has unit
+marginal scale and AR(1) correlation 0, 0.5, or 0.4 for the independent,
+correlated, or heterogeneous design, respectively. Its noise standard
+deviation is the unweighted mean of the three realised site standard
+deviations. Thus the heterogeneous test population is a specified common
+target, not a sample-size-weighted mixture of training sites.
+
+Population independence does not make a finite high-dimensional design
+orthogonal. Proposition~\ref{prop:orth} supplies an exactly solvable
+reference case, not an approximation theorem for these simulations.
+The designs do not isolate every source of an epoch effect.
+
+\subsection{Protocol and tuning}
+
+Local grids contain 30 logarithmically spaced penalties from
+$\lambda_j^{\max}=\|X_j^\top y_j\|_\infty/m_j$ to
+$10^{-3}\lambda_j^{\max}$. The pooled reference uses the corresponding
+pooled grid. Penalties are fixed before fitting. Federated iterations
+start at zero and use $E\in\{1,2,3,5,8,10,15,20\}$, stopping at an
+update norm below $10^{-5}$ or after 500 rounds. The ST grid is zero
+plus 39 logarithmically spaced thresholds on
+$[10^{-3}\bar\lambda,5\bar\lambda]$; the P grid is
+$\bar\lambda\{1,1/2,1/4,1/8,1/16\}$.
+
+Consensus ADMM uses augmented-Lagrangian parameter 1. Its primal residual
+is $(\sum_j\|x_j-z\|_2^2)^{1/2}$ and its server-update residual is
+$\|z^{\mathrm{new}}-z^{\mathrm{old}}\|_2$; both must be below
+$10^{-8}\sqrt p$, with a 500-iteration cap. The usual stacked dual
+residual is $\sqrt K$ times this server-update residual. The centrally
+computed ADMM-CV path contains 15 logarithmically spaced penalties on
+$[\bar\lambda/8,4\bar\lambda]$.
+
+\subsection{Implementation and replication}
+
+The implementation uses cyclic coordinate descent in scikit-learn
+\citep{pedregosa2011}. Warm-started local calls use zero convergence
+tolerance and a maximum of $E$ iterations; independent checks compare
+their output with explicit coordinate sweeps. Penalty paths use tolerance
+$10^{-4}$, final local fits $10^{-10}$, and the centrally computed
+consensus path $10^{-6}$. Convergence diagnostics and software versions
+accompany the results.
+
+For each design, the 200 replicates use the same set of 200 seeds:
+5000--5066 (67 seeds), 6000--6066 (67 seeds), and 7000--7065 (66 seeds).
+Together, these three blocks form the complete seed set for every design.
+All methods share the same data within a replicate.
+Monte Carlo standard errors are sample standard deviations divided by
+$\sqrt{200}$; schedule contrasts are calculated within replicate before
+averaging. Seeds are reused across designs, so design summaries are not
+independent experimental samples. The scripts regenerate results, tables,
+figures, and numerical macros for the main simulation study.

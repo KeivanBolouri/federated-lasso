@@ -1,0 +1,169 @@
+\section{Aggregation, sparsity and fixed points}
+\label{sec:theory}
+
+We first analyse an exactly solvable orthogonal design, then characterise
+fixed points for general designs. The orthogonal results distinguish
+support enlargement caused by averaging from dependence on the number of
+local epochs. They do not assume that every average of sparse vectors is
+dense.
+
+\subsection{Orthogonal designs}
+
+Assume in this subsection that each site satisfies
+$X_j^\top X_j=m_j I_p$, which requires $p\le\min_j m_j$, and write
+$z_j=X_j^\top y_j/m_j$. Penalties are treated as fixed positive constants.
+
+\begin{proposition}[Orthogonal designs]
+\label{prop:orth}
+Under these assumptions:
+\begin{enumerate}
+\item[(i)] For every integer $E\ge1$ and starting point $\bbeta\in\R^p$,
+ $T_j^E(\bbeta)=\soft(z_j,\lambda_j)$.
+\item[(ii)] The unrestricted sequence in Algorithm~\ref{alg:fedavg} satisfies
+ $\bbeta_t=\bbar:=\sum_jw_j\soft(z_j,\lambda_j)$ for all $t\ge1$.
+ With $\varepsilon_{\mathrm{tol}}>0$, the stopping rule terminates within
+ two rounds. Its output does not depend on $E$.
+\item[(iii)] The pooled design satisfies $X^\top X=mI_p$, and its unique
+ minimiser is $\hat\bbeta_F=\soft(\bar z,\bar\lambda)$, where
+ $\bar z=\sum_jw_jz_j$.
+\item[(iv)] The supports satisfy
+ $\supp(\hat\bbeta_F)\subseteq\bigcup_j\supp(\soft(z_j,\lambda_j))$.
+ For fixed penalties and weights, this union equals $\supp(\bbar)$ except
+ on a Lebesgue-null subset of $(z_1,\ldots,z_K)\in\R^{Kp}$ where non-zero
+ contributions cancel exactly.
+\end{enumerate}
+\end{proposition}
+
+\begin{proof}
+For coordinate $k$, orthogonality gives
+\[
+ x_{jk}^\top(y_j-X_j\bbeta+x_{jk}\bbeta_k)
+ =x_{jk}^\top y_j,
+ \qquad \|x_{jk}\|_2^2=m_j.
+\]
+Equation~\eqref{eq:cd} therefore sets the coordinate to
+$\soft(z_{jk},\lambda_j)$ independently of its starting value. One sweep
+sets every coordinate to its local minimiser and subsequent sweeps leave
+it unchanged. This proves (i). Consequently $\bbeta_1=\bbeta_2=\bbar$,
+proving (ii); the stopping rule may already hold in round one.
+For (iii), sum $X_j^\top X_j=m_jI_p$ over sites and apply
+Lemma~\ref{lem:pooled} coordinatewise.
+
+If $|z_{jk}|\le\lambda_j$ at every site, then
+$|\bar z_k|\le\sum_jw_j|z_{jk}|\le\bar\lambda$, so coordinate $k$ is
+absent from the pooled solution. This proves the inclusion in (iv).
+To prove its second statement, partition $\R^{Kp}$ by the local active
+sets and signs. On each of the finitely many resulting regions,
+$\bbar_k$ is affine in the $z_{jk}$. If at least one site is active at
+coordinate $k$, the coefficient of that site's $z_{jk}$ is $w_j>0$.
+Thus $\bbar_k=0$ lies on a proper affine hyperplane. The union of these
+hyperplanes over coordinates and regions, together with their boundaries,
+has Lebesgue measure zero.
+\end{proof}
+
+The support inclusion need not be strict. For example, with $K=2$, equal
+weights, $\lambda_1=\lambda_2=1$, $z_1=(2,0,0)$ and $z_2=(3,0,0)$,
+the average and pooled solution both equal $(1.5,0,0)$. Their supports
+remain equal and sparse on an open neighbourhood of these statistics.
+Averaging can enlarge a support when sites select different coordinates;
+it does not necessarily remove all exact zeros.
+
+Part (ii) establishes exact independence from $E$ for orthogonal local
+designs. Nonorthogonal designs can require multiple coordinate-descent
+sweeps and hence can produce $E$-dependent iterates. This observation does
+not provide a quantitative ordering across correlated designs. In
+particular, independent predictors in the population do not yield
+orthogonal empirical Gram matrices when $p>m_j$.
+
+\begin{corollary}[False-positive probability under a fixed penalty]
+\label{cor:fp}
+In the setting of Proposition~\ref{prop:orth}, suppose $K\ge2$,
+$\lambda_j=\lambda>0$, and, for a null coordinate $k$,
+$z_{jk}\sim N(0,\sigma^2/m_j)$ independently across sites, with $\sigma>0$.
+Then
+\[
+\Prob(k\in\supp(\bbar))
+ =1-\prod_{j=1}^K\{1-2\bar\Phi(\lambda\sqrt{m_j}/\sigma)\}
+ >2\bar\Phi(\lambda\sqrt m/\sigma)
+ =\Prob(k\in\supp(\hat\bbeta_F)),
+\]
+where $\bar\Phi$ is the standard normal survival function. For fixed
+$m$, $\lambda$ and $\sigma$, the left-hand side strictly increases with
+$K$ along balanced partitions $m_j=m/K$ satisfying the design assumptions.
+\end{corollary}
+
+\begin{proof}
+The Gaussian statistics have a joint density, so cancellation in
+Proposition~\ref{prop:orth}(iv) has probability zero. Independence of the
+events $\{|z_{jk}|>\lambda\}$ gives the first equality. Their union has
+probability at least $2\bar\Phi(\lambda\sqrt{m_1}/\sigma)$, which strictly
+exceeds $2\bar\Phi(\lambda\sqrt m/\sigma)$ because $m_1<m$.
+Also $\bar z_k\sim N(0,\sigma^2/m)$, giving the pooled probability.
+For balanced partitions let $q_K=2\bar\Phi(\lambda\sqrt{m/K}/\sigma)$.
+Both $q_K\in(0,1)$ and $1-(1-q_K)^K$ strictly increase with $K$.
+\end{proof}
+
+The corollary concerns exact non-zero coefficients and a fixed common
+penalty. It does not establish the same monotonicity for independently
+tuned penalties, arbitrary repartitions, or coefficients declared active
+only above a positive numerical threshold.
+
+\subsection{General designs: fixed points}
+
+Write $D_j^E(b)=T_j^E(b)-b$ for the local displacement. The following
+statement characterises fixed points; it does not assert that the
+averaged iteration converges to one.
+
+\begin{proposition}[Averaged stationarity]
+\label{prop:fixed}
+A point $b^\dagger$ is a fixed point of Algorithm~\ref{alg:fedavg} if and
+only if
+\begin{equation}
+ \sum_{j=1}^K w_jD_j^E(b^\dagger)=0.
+ \label{eq:fixedpoint}
+\end{equation}
+All its local displacements vanish if and only if
+$b^\dagger\in\bigcap_j\arg\min\Lloc_j$.
+Thus, if this intersection is empty, any fixed point has non-zero local
+displacements that cancel in the weighted average. In general,
+\eqref{eq:fixedpoint} does not imply $0\in\partial F(b^\dagger)$.
+\end{proposition}
+
+\begin{proof}
+The update equals $b+\sum_jw_jD_j^E(b)$, proving the first equivalence.
+For a fixed site, each coordinate subproblem is strictly convex because
+its column has positive squared norm. An exact coordinate update
+therefore strictly decreases $\Lloc_j$ whenever it changes the coordinate.
+If $T_j^E(b)=b$, the objective has the same value before and after the
+sweeps, so no update can have changed a coordinate. The coordinatewise
+optimality conditions then give
+$0\in X_j^\top(X_jb-y_j)/m_j+\lambda_j\partial\|b\|_1$,
+which is sufficient for a global minimum by convexity. Conversely, a
+minimiser satisfies these conditions and every unique coordinate update
+leaves it fixed. This proves the second equivalence.
+
+For the final nonimplication take $K=2$, $p=m_1=m_2=1$,
+$X_1=X_2=[1]$, $y_1=2$, $y_2=0$ and $\lambda_1=\lambda_2=1$.
+For every $E\ge1$ the local maps return $1$ and $0$, respectively, so
+$b^\dagger=1/2$ is an averaged fixed point. The pooled minimiser is
+$\soft(1,1)=0$, while $F'(1/2)=1/2\ne0$.
+\end{proof}
+
+Distinct local minimisers do not by themselves exclude a pooled-optimal
+fixed point; the sparse example following Proposition~\ref{prop:orth}
+already shows this. The relevant diagnostic is the objective gap to a
+numerically converged solution of the same pooled problem, rather than
+the local displacements alone. Consensus ADMM provides that comparison
+without requiring row-level exchange \citep{boyd2011}.
+
+\begin{remark}
+Proposition~\ref{prop:orth} requires $p\le\min_jm_j$ and does not apply
+directly to our $p=600>m_j$ simulations. The orthogonal experiment in
+Supplement S1, Table S3, directly illustrates
+Proposition~\ref{prop:orth} and Corollary~\ref{cor:fp}.
+Proposition~\ref{prop:fixed}
+applies to general designs but gives neither a convergence rate nor a
+bound on the objective gap as a function of $E$. The experiments assess
+support, optimisation accuracy and computational cost separately within
+their specified designs.
+\end{remark}
