@@ -1,42 +1,5 @@
 \begin{abstract}
-\noindent
-Federated learning fits a shared model across sites that cannot pool
-raw records. When the scientific target is \emph{which variables matter}
-rather than prediction alone, the natural tool is a sparse regression such
-as the Lasso, and every federated protocol must choose $E$, the number of
-local passes each site takes between aggregation rounds. Larger $E$ buys
-fewer communication rounds at the risk of client drift. We study this
-trade-off for a synchronous federated coordinate-descent Lasso and report a
-finding that changes how such algorithms should be read: the weighted
-average of locally soft-thresholded coefficient vectors is, except in
-degenerate cases, not sparse, and its active set is the union of the local
-active sets rather than the active set of any Lasso fit. We prove this in
-closed form for orthogonal designs, where we also show that the iteration
-terminates after a single round and is therefore entirely insensitive to
-$E$, and we characterise the fixed point of the general iteration as an
-averaged-stationarity condition that does not coincide with stationarity of
-the aggregated objective. Consequently, published comparisons of active-set
-size or support agreement across $E$ measure an artefact of the aggregation
-rule as much as client drift. We compare two repairs---a one-round server-side soft-threshold whose level
-is chosen by federated validation from scalar summaries, and per-round
-proximal aggregation, the coordinate-descent analogue of the composite fix
-that motivates federated dual averaging---against consensus ADMM, which
-minimises exactly the same objective, and against pooled and local baselines
-under \emph{matched} penalty-selection rules. In a Monte Carlo study over
-$200$ replicates in each of three designs, plain averaging selects a third to
-a half of all predictors at every $E$ and is beaten by fitting the Lasso at
-one site and ignoring the others; both repairs recover most of the lost
-selection accuracy at negligible communication cost; and consensus ADMM is
-best when sites are alike but worst among the sparse methods when they are
-not, because exact optimisation cannot compensate for a single common
-penalty. We also find that switching the penalty-selection rule from
-minimum validation error to the one-standard-error rule moves selection
-accuracy further than any choice of $E$, which suggests that studies varying
-the local-epoch count while holding a prediction-tuned penalty fixed are
-varying the wrong parameter. Finally, ranking schedules by communication
-rounds alone is misleading, since total local computation moves in the
-opposite direction.
+Federated Lasso procedures must choose how many local updates occur between communication rounds. We study this choice for cyclic coordinate descent, separating aggregation, penalty selection, and computational cost. Under orthogonal local designs, one sweep determines the local fit, so the aggregated estimator is independent of the epoch count. Its support generally equals the union of local supports, and its fixed point need not minimise the pooled Lasso objective. Simulations with 200 replicates per design compare averaging, server thresholding, and consensus optimisation under explicit tuning rules. Both local penalty selection and server thresholding affect support recovery; improvements can increase prediction error. Communication accounting includes all candidate trajectories used to select per-round thresholds. Additional experiments compare a deterministic federated dual-averaging implementation at fixed training budgets and examine public diabetes data. The results distinguish active-set size from variable identity and show why communication, computation, optimisation error, and selection quality require careful separate assessment.
 \end{abstract}
 
-\noindent\textbf{Keywords:} federated learning; Lasso; coordinate descent;
-variable selection; communication efficiency; ADMM; client drift.
+\noindent\textbf{Keywords:} federated learning; Lasso; coordinate descent; variable selection; communication cost; dual averaging.

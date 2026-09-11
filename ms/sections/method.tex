@@ -1,130 +1,125 @@
-\section{A server-side selection step, and exact comparators}
+\section{Selection steps and comparison methods}
 \label{sec:method}
 
-Proposition~\ref{prop:orth}(iv) identifies a specific defect---the
-aggregation step returns a dense vector---and suggests an equally specific
-remedy: apply the proximal operator of the $\ell_1$ penalty at the server,
-where the aggregation happens.
+Proposition~\ref{prop:orth} explains why averaging can retain more variables
+than the pooled Lasso. We evaluate two thresholding variants and distinguish
+their selection properties from minimisation of the objective $F$.
 
-\subsection{\textsc{FedAvg-ST}: thresholding after convergence}
+\subsection{FedAvg-ST: thresholding after convergence}
 
-Let $\bbeta_R$ be the output of Algorithm~\ref{alg:fedavg} after $R$ rounds.
-\textsc{FedAvg-ST} adds a single round in which the server broadcasts a grid
-$\mathcal{T}$ of candidate thresholds and each site returns, for each
-candidate $\tau$, the three scalars
+Let $\bbeta_R$ be the output of Algorithm~\ref{alg:fedavg}. For each candidate
+$\tau\in\mathcal T$, a site evaluates $\soft(\bbeta_R,\tau)$ on its validation
+data and returns
 \begin{equation}
-A_j(\tau) = \sum_{i=1}^{m_j^{\mathrm{val}}} r_{ji}(\tau)^2, \qquad
-B_j(\tau) = \sum_{i=1}^{m_j^{\mathrm{val}}} r_{ji}(\tau)^4, \qquad
-m_j^{\mathrm{val}} ,
+A_j(\tau)=\sum_{i=1}^{m_j^{\mathrm{val}}}r_{ji}(\tau)^2,\qquad
+B_j(\tau)=\sum_{i=1}^{m_j^{\mathrm{val}}}r_{ji}(\tau)^4,\qquad
+m_j^{\mathrm{val}},
 \label{eq:scalars}
 \end{equation}
-where $r_{ji}(\tau) = y_{ji} - x_{ji}^\top \soft(\bbeta_R, \tau)$. These are
-sufficient for both the weighted validation mean squared error
-$\widehat{\mathrm{MSE}}(\tau) = \sum_j w_j A_j(\tau)/m_j^{\mathrm{val}}$ and
-the observation-level standard error of the squared residuals,
-$\widehat{\mathrm{SE}}(\tau)^2
- = \{\sum_j B_j(\tau) - (\sum_j A_j(\tau))^2/n_{\mathrm{val}}\}
-   /\{n_{\mathrm{val}}(n_{\mathrm{val}}-1)\}$ with
-$n_{\mathrm{val}} = \sum_j m_j^{\mathrm{val}}$; no second pass and no
-row-level exchange is required. The server then selects
+where $r_{ji}(\tau)=y_{ji}-x_{ji}^{\top}\soft(\bbeta_R,\tau)$.
+The server obtains
+$\widehat{\mathrm{MSE}}(\tau)=\sum_jw_j A_j(\tau)/m_j^{\mathrm{val}}$.
+All experiments use validation shares satisfying
+$w_j=m_j^{\mathrm{val}}/n_{\mathrm{val}}$, where
+$n_{\mathrm{val}}=\sum_jm_j^{\mathrm{val}}$. The pooled observation-level
+standard-error estimate is consequently
+\[
+\widehat{\mathrm{SE}}(\tau)^2=
+\frac{\sum_jB_j(\tau)-(\sum_jA_j(\tau))^2/n_{\mathrm{val}}}
+{n_{\mathrm{val}}(n_{\mathrm{val}}-1)}.
+\]
+For heterogeneous fixed sites this is a pooled one-standard-error heuristic,
+not a site-stratified variance estimator or a calibrated confidence interval.
+The selected threshold is
 \begin{equation}
-\hat\tau = \max\Big\{\tau \in \mathcal{T} :
-  \widehat{\mathrm{MSE}}(\tau) \le
-  \widehat{\mathrm{MSE}}(\tau_{\min}) + \widehat{\mathrm{SE}}(\tau_{\min})\Big\},
-\qquad
-\hat\bbeta^{\mathrm{ST}} = \soft(\bbeta_R, \hat\tau),
+\hat\tau=\max\{\tau\in\mathcal T:
+\widehat{\mathrm{MSE}}(\tau)\leq
+\widehat{\mathrm{MSE}}(\tau_{\min})+
+\widehat{\mathrm{SE}}(\tau_{\min})\},\qquad
+\hat\bbeta^{\mathrm{ST}}=\soft(\bbeta_R,\hat\tau),
 \label{eq:st}
 \end{equation}
-where $\tau_{\min}$ minimises $\widehat{\mathrm{MSE}}$ over the grid. This is
-the familiar one-standard-error rule applied to a threshold rather than to a
-penalty. The minimum-MSE rule is not used because it selects
-$\hat\tau \approx 0$ and returns the dense iterate unchanged; we report that
-variant (\textsc{FedAvg-ST-min}) so the reader can see the effect of the rule
-rather than take it on trust. Because the one-standard-error rule favours
-sparsity, every baseline in Section~\ref{sec:sim} is reported under both
-rules (Section~\ref{sub:matched}).
+where $\tau_{\min}$ minimises validation MSE. The largest eligible threshold
+favours a smaller active set. We also report \textsc{FedAvg-ST-min}, which
+uses $\tau_{\min}$. Neither rule uses true support or independent test data.
 
-The extra round transmits $3|\mathcal{T}|$ scalars per site rather than a
-$p$-vector. With $|\mathcal{T}| = 40$ and $K = 3$ this is $2.8$~KiB, against
-$14.1$~KiB for one round of coefficient vectors, and we account for the two
-separately in all cost tables.
+Post-fit selection adds one validation exchange. Counting the sample count
+for every candidate gives $3K|\mathcal T|$ uploaded double-precision scalars,
+or $2.81$~KiB for $K=3$ and $|\mathcal T|=40$. Every site must also receive
+the final coefficient vector and grid; downloads are excluded from the
+upload convention.
 
-\subsection{\textsc{FedAvg-P}: proximal aggregation}
+\subsection{FedAvg-P: thresholding in each round}
 
-\textsc{FedAvg-ST} repairs the output; it does not repair the iteration.
-The natural composite fix is to apply the proximal operator at the server in
-\emph{every} round, $\bbeta_{t+1} \gets \soft(\sum_j w_j \bbeta_{j,t}, \tau)$,
-which is the coordinate-descent analogue of the server-side correction that
-motivates FedDualAvg \citep{yuan2021fco} and the federated dual-averaging
-methods of \citet{bao2022}. The threshold matters: fixing $\tau = \bar\lambda$
-compounds shrinkage across rounds and over-sparsifies badly, so we select
-$\tau$ over a five-point grid $\bar\lambda \cdot \{1, \tfrac12, \tfrac14,
-\tfrac18, \tfrac1{16}\}$ by the same one-standard-error rule on the same
-scalar summaries. We do not implement FedDualAvg itself: it replaces exact
-local coordinate descent with local dual-averaging steps, which changes what
-$E$ means and would make the local-epoch comparison incoherent. A comparison
-at fixed communication budget between the two families is worth doing and we
-do not attempt it here.
+The per-round variant uses
+$\bbeta_{t+1}=\soft(\sum_jw_j\bbeta_{j,t},\tau)$.
+For each $\tau$ in $\bar\lambda\{1,1/2,1/4,1/8,1/16\}$, we fit a separate
+trajectory and select the largest threshold within one SE of minimum
+validation error. This is a heuristic sparsification of the CD iteration;
+it does not inherit convergence guarantees for $F$ from FedDualAvg or
+other composite methods \citep{yuan2021fco,bao2022}.
+If candidate $q$ takes $R_q$ rounds, full vector upload is
+$8Kp\sum_{q=1}^5R_q$ bytes and CD work is
+$E\sum_{q=1}^5R_q$ sweeps per site. An additional $0.35$~KiB covers
+validation scalars. The selected fit's cost is retained separately.
+Unlike post-fit ST, selecting P requires multiple complete fits.
 
 \subsection{Comparators}
 
-We compare against four alternatives, all fitted on identical data.
+\paragraph{Pooled and local Lasso.}
+The pooled reference uses all training records and tunes its penalty on the
+pooled validation sample. The local reference uses the largest site alone.
+Both are fitted under minimum-MSE and one-SE penalty selection. Pooled data
+are used for reference computation in this single-machine simulation;
+the federated iteration does not require them.
 
-\paragraph{Pooled Lasso.} The centralised fit on the concatenated sample,
-with its penalty tuned by validation MSE on the concatenated validation
-split. This is the infeasible reference an analyst would use if the data
-could be centralised. Note that it is tuned independently and therefore
-generally uses a penalty different from $\bar\lambda$.
+\paragraph{One-shot averaging.}
+Each site fits its Lasso to convergence, followed by one weighted average.
+This is the large-local-work limiting comparator, with one vector upload
+per site. Both local penalty rules are included. The uncorrected average
+here differs from debiased distributed estimators such as those of
+\citet{lee2017} and \citet{battey2018}.
 
-\paragraph{Consensus ADMM.} The alternating direction method of multipliers
-in global consensus form \citep{boyd2011} applied to $F$: each site solves a
-ridge-regularised least-squares subproblem by a Cholesky factorisation
-computed once, the server soft-thresholds the averaged primal-plus-dual
-variable, and duals are updated locally. By Lemma~\ref{lem:pooled} this
-returns the pooled Lasso solution at $\bar\lambda$ to numerical precision,
-using the same communication pattern (one $p$-vector per site per iteration)
-and the same privacy boundary as Algorithm~\ref{alg:fedavg}. It is therefore
-the right control: it isolates the effect of \emph{how} the sites are
-combined, holding the objective, the data and the communication channel
-fixed. Because ADMM inherits its penalty from the local $\lambda_j$, we also
-report \textsc{ADMM-CV}, in which the consensus penalty is selected over a
-$15$-point grid by federated validation, under both selection rules. This
-separates ``exact optimisation'' from ``a fortunate value of
-$\bar\lambda$''---a distinction that turns out to matter
-(Section~\ref{sec:results}).
+\paragraph{Consensus ADMM.}
+Consensus ADMM \citep{boyd2011} alternates local ridge updates,
+a server soft-threshold, and local dual updates.
+Each site uploads one primal-plus-dual vector per iteration. By
+Lemma~\ref{lem:pooled}, its target equals the pooled Lasso at
+$\bar\lambda$. We check numerical residuals rather than equating a finite
+iteration with an exact solution. This comparator holds $F$ fixed while
+changing the solver.
 
-\paragraph{One-shot averaging.} Each site solves its local problem to
-convergence and the server averages once, the $E \to \infty$, $R = 1$
-extreme of Algorithm~\ref{alg:fedavg}
-\citep{lee2017,battey2018}.
+\textsc{ADMM-CV} and \textsc{ADMM-CV-1SE} instead tune the common penalty
+over a 15-point validation grid. We compute these paths using the equivalent
+pooled objective. Their statistical performance is reported, but no
+unmeasured federated tuning cost is assigned to these centrally computed paths.
 
-\paragraph{Local-only.} The Lasso fitted at the largest site alone, with no
-communication. This is the do-nothing baseline, and it is the relevant one:
-a federated procedure that does not beat it is not worth deploying.
-
-\subsection{Matched tuning rules}
+\subsection{Tuning comparisons}
 \label{sub:matched}
 
-Selection metrics are sensitive to how the penalty is chosen, and a
-comparison in which one method is tuned for sparsity and its baselines for
-prediction is not a comparison of aggregation rules. We therefore report
-every non-federated comparator twice: once with the penalty minimising
-validation MSE (the rule used inside the protocol for $\lambda_j$, labelled
-without a suffix) and once with the one-standard-error rule (suffix
-\textsc{-1SE}), which is the rule \textsc{FedAvg-ST} and \textsc{FedAvg-P}
-use for their thresholds. The honest reading of the results is the
-\textsc{-1SE} column; we give both.
+The -1SE suffix denotes the largest eligible penalty on the same grid used
+for minimum-MSE tuning. In particular, \textsc{FedAvg-1SE} changes each
+local penalty before averaging, and \textsc{One-shot-1SE} changes each
+converged local fit. These comparisons isolate the local penalty rule
+within an aggregation method. ST and P instead use minimum-MSE local
+penalties followed by one-SE server-threshold selection. They are distinct
+two-stage procedures; sharing the name ``one-SE'' does not make their
+search spaces identical. ADMM at inherited $\bar\lambda$ is a fixed-objective
+control, not a one-SE-tuned method.
 
-\subsection{Reporting conventions}
+\subsection{Metrics and cost conventions}
 
-A coefficient is called active when $|\hat\bbeta_k| > \epsilon$ with
-$\epsilon = 10^{-4}$; because the aggregated iterate carries many
-small non-zero entries, results for plain averaging are sensitive to
-$\epsilon$ and we report that sensitivity explicitly in
-Section~\ref{sec:results}. Support quality is summarised by precision,
-recall, $F_1$ and the Jaccard index against the true support in simulation,
-and against the pooled Lasso support in the data illustration, where the
-truth is unknown. Estimation quality is $\|\hat\bbeta - \bbeta^\star\|_2$
-and prediction quality is mean squared error on an independent test sample
-of $2000$ observations. Cost is reported on both axes: upload in KiB and
-total coordinate-descent epochs per site.
+A coordinate is active when $|\hat\beta_k|>\epsilon$, with
+$\epsilon=10^{-4}$. Simulation precision, recall, $F_1$, and Jaccard index
+compare this set with known true support. Precision and $F_1$ are set to
+zero for an empty selected model, so all simulation means use all 200
+replicates. Estimation error is $\|\hat\bbeta-\bbeta^\star\|_2$; test MSE
+uses independent observations. When true coefficients are unavailable,
+overlap with a pooled fit measures agreement, not correctness.
+
+Fit-round totals include every P candidate; validation adds one further
+communication round. We distinguish uploaded vectors from validation scalars.
+Downloads, protocol headers, and local penalty-search work are excluded;
+these are not end-to-end runtime measurements. CD epochs quantify work
+within the CD family and do not measure ADMM's factorisation and linear
+solves. No formal privacy guarantee is claimed.

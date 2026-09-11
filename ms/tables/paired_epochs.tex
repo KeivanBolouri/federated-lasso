@@ -1,0 +1,17 @@
+\begin{table}[tb]\centering\small
+\caption{Paired change in true-support $F_1$, $E=20$ minus $E=1$. Each difference is computed within replicate before averaging; MCSE is the standard deviation of the paired differences divided by $\sqrt{200}$.}
+\label{tab:paired}\begin{tabular}{llrr}\toprule
+Design & Method & Mean change & Paired MCSE \\\midrule
+Independent & FedAvg & +0.0367 & 0.0012 \\
+ & FedAvg-1SE & +0.0319 & 0.0022 \\
+ & FedAvg-ST & -0.0178 & 0.0044 \\
+ & FedAvg-P & +0.0663 & 0.0066 \\
+Correlated & FedAvg & +0.0449 & 0.0011 \\
+ & FedAvg-1SE & +0.0460 & 0.0024 \\
+ & FedAvg-ST & -0.0187 & 0.0051 \\
+ & FedAvg-P & +0.0534 & 0.0061 \\
+Heterogeneous & FedAvg & +0.0530 & 0.0017 \\
+ & FedAvg-1SE & +0.0484 & 0.0029 \\
+ & FedAvg-ST & -0.0013 & 0.0055 \\
+ & FedAvg-P & +0.0466 & 0.0084 \\
+\bottomrule\end{tabular}\end{table}

@@ -1,0 +1,36 @@
+{
+  "dataset_kind": "fixed synthetic benchmark; original generator unavailable",
+  "local_penalties": [
+    0.20457421290967445,
+    0.3634688824621145,
+    0.19534410602060526
+  ],
+  "lambda_bar": 0.2503965923975926,
+  "pooled_penalty": 0.17779758216009006,
+  "training_sizes": [
+    400,
+    240,
+    160
+  ],
+  "validation_sizes": [
+    100,
+    60,
+    40
+  ],
+  "feature_count": 600,
+  "source_file_sha256": {
+    "node1_X_train.csv": "21ece477f312eff8aa53c8f63042288d0993289f1d4b7364f806db79bad80677",
+    "node1_X_val.csv": "88a3fd89658cc0d6abb4a5a0bd051219649f9adee3049c80c45efa6cf8b7a6ee",
+    "node1_y_train.csv": "4ae70535c9166acc1dcc34248ea17c1d443b2b33c8fb2da8eb2f5cea41b9c7d1",
+    "node1_y_val.csv": "e73b02e890d5fa462353c2a5c75d036262b33338dad3ae71f28027008cb757a2",
+    "node2_X_train.csv": "49818fe26c71b8fbfbb9cf1c836197520b5d4c847d0125ca01845a555da400ad",
+    "node2_X_val.csv": "2ae679ebb0dbe73224bc0c2b0088531e584b8edbbbc89ae59ea5c22598c8722d",
+    "node2_y_train.csv": "db2c93ec4ff15ff9a1692ba024ddb7f4e58d0aca75db26954bdbc7233925e086",
+    "node2_y_val.csv": "46c8a31d28698c04e9e43f95de3d1fa9a9ad2319ebed77f93cc09a1034d77627",
+    "node3_X_train.csv": "ebb68e14578896a1b541b071c31f6f9688a4c8f64b27829919058f48dfb30ece",
+    "node3_X_val.csv": "fd80a5dad8c2922f9b34d2c34b9389b8894a8c011494305c992b0efa453872f0",
+    "node3_y_train.csv": "47c95a4873a1817348c15c1a3fc63faa4a0fe648c84543dc4aba1bf4dc4dfbeb",
+    "node3_y_val.csv": "cc6afc4aec3d9dbe67a214b0f3204fde54d4582a4a8d59637f09a7558f77e250"
+  },
+  "cost_scope": "all fitted FedAvg-P threshold candidates; selected costs also recorded; coefficient uploads plus validation scalars; setup/broadcasts excluded"
+}

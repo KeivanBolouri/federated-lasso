@@ -16,8 +16,8 @@
 \usepackage[colorlinks=true,citecolor=blue,linkcolor=blue,urlcolor=blue]{hyperref}
 \usepackage{setspace}
 \usepackage{caption}
-\usepackage{algorithm}
-\usepackage{algpseudocode}
+\usepackage[section]{placeins}
+\newcounter{algorithm}
 \usepackage{longtable}
 
 \bibliographystyle{apalike}
@@ -41,16 +41,18 @@
 \newcommand{\Lloc}{\mathcal{L}}
 
 \input{numbers}
+\input{word_count}
 
-\title{\bfseries How Many Local Epochs? Communication Cost, Client Drift and
-Variable Selection in Federated Coordinate-Descent Lasso}
+\title{\bfseries Local Epochs, Aggregation and Variable Selection\\
+in Federated Coordinate-Descent Lasso}
 
 \author{Keivan Bolouri\\[2pt]
 \small Department of Statistics, Donald Bren School of Information and Computer Sciences\\
 \small University of California, Irvine\\
-\small \texttt{kbolouri@uci.edu}}
+\small Corresponding author: \texttt{kbolouri@uci.edu}}
 
-\date{\today}
+\date{September 11, 2026\\[3pt]
+\small Approximate word count, including tables and references: \ManuscriptWordCount}
 
 \begin{document}
 \maketitle
@@ -63,21 +65,38 @@ Variable Selection in Federated Coordinate-Descent Lasso}
 \input{sections/method}
 \input{sections/simulation}
 \input{sections/results}
+\input{sections/budget}
 \input{sections/realdata}
+\input{sections/public_data}
 \input{sections/discussion}
 
 \section*{Data and code availability}
-All code, simulation drivers and the site-level data used in
-Section~\ref{sec:realdata} are available at
-\url{https://github.com/KeivanBolouri/federated-lasso}. The replication
-scripts regenerate every table and figure in this article from a single
-entry point; random seeds are recorded in the driver.
+Code, recorded simulation seeds, raw and summary results, and the fixed
+synthetic benchmark are available at
+\url{https://github.com/KeivanBolouri/federated-lasso}.
+The public diabetes data and their provenance are documented in the same
+repository. Reproduction commands regenerate the numerical outputs and
+manuscript; the original generator for the fixed synthetic benchmark is
+unavailable.
+
+\section*{Funding}
+This research received no dedicated funding.
 
 \section*{Disclosure statement}
 The author reports no conflict of interest.
 
+\section*{Declaration of generative AI use}
+OpenAI ChatGPT (Codex, accessed September 2026) assisted with manuscript
+revision, literature checking, mathematical and numerical checking,
+software development, and figure-generation code. This assistance included
+proposed scientific revisions and additional computational analyses.
+The author retains responsibility for the content. The accompanying
+revision record identifies material requiring independent author review
+and completion of the publisher's AI-use declarations before submission.
+
 \bibliography{refs}
 
+\clearpage
 \appendix
 \input{sections/appendix}
 

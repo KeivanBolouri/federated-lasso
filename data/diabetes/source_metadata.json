@@ -1,0 +1,24 @@
+{
+  "dataset": "Diabetes regression data used in Least Angle Regression",
+  "loader": "sklearn.datasets.load_diabetes(scaled=False)",
+  "scikit_learn_version": "1.8.0",
+  "observations": 442,
+  "predictors": [
+    "age",
+    "sex",
+    "bmi",
+    "bp",
+    "s1",
+    "s2",
+    "s3",
+    "s4",
+    "s5",
+    "s6"
+  ],
+  "target": "quantitative disease progression one year after baseline",
+  "source_url": "https://www4.stat.ncsu.edu/~boos/var.select/diabetes.html",
+  "loader_documentation": "https://scikit-learn.org/stable/modules/generated/sklearn.datasets.load_diabetes.html",
+  "paper": "Efron, Hastie, Johnstone and Tibshirani (2004), Least Angle Regression, Annals of Statistics 32(2):407-499, doi:10.1214/009053604000000067",
+  "raw_csv_sha256": "851e2b3ac623b0e91f846bf4986c0b3f51cb4702d120e4a0088200365af3b6e5",
+  "raw_csv_encoding": "UTF-8, LF newlines, float_format=%.17g"
+}

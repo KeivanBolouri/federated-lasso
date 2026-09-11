@@ -1,18 +1,15 @@
-\section{Additional results}
+\section{Additional numerical results}
 \label{app:extra}
 
-Table~\ref{tab:eps} reports the sensitivity of the active-set size to the
-activity threshold $\epsilon$ used to declare a coefficient non-zero. The
-plain average carries a large number of coefficients of very small
-magnitude, so its apparent sparsity is a function of $\epsilon$; the
-thresholded and ADMM solutions have exact zeros and are unaffected.
+Table~\ref{tab:eps} varies the activity threshold in the fixed synthetic
+benchmark. All methods can retain exact zeros, and all can lose active
+coordinates when the threshold exceeds the magnitude of a nonzero
+coefficient. Thus threshold sensitivity must be described from the counts,
+not inferred solely from whether the estimator uses soft-thresholding.
 
 \input{tables/eps_sensitivity}
 
-Table~\ref{tab:full} gives the complete per-design results underlying
-Section~\ref{sec:results}, including estimation error, prediction error and
-both cost axes, with Monte Carlo standard errors. Upload is split into
-coefficient-vector traffic and the scalar traffic used by the threshold
-selection step, which is two orders of magnitude smaller.
-
-\input{tables/full_results}
+The complete simulation grid is provided in Supplementary Table~S1 and in
+the raw and summary CSV files. These include estimation and prediction
+errors, support metrics, convergence diagnostics, and selected-fit and
+full-selection costs.

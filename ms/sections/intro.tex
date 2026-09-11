@@ -7,120 +7,101 @@ firewalls, trials governed by separate data-use agreements, claims
 databases that no single sponsor controls. Federated learning
 \citep{mcmahan2017,kairouz2021} addresses this by exchanging model
 parameters rather than records. A central server broadcasts a current
-parameter vector, each site improves it on its own data for a while, and
-the server aggregates what comes back.
+parameter vector, each site updates it on its own data, and the server
+aggregates the returned vectors.
 
-The phrase ``for a while'' hides the design parameter this article is
-about. Let $E$ denote the number of local passes---here, full
-coordinate-descent (CD) epochs---each site performs between aggregation
-rounds. Increasing $E$ reduces the number of communication rounds, which is
-the resource federated protocols are usually built to conserve. It also
-lets each site travel further toward its own optimum before being pulled
-back, which is client drift \citep{li2020convergence,karimireddy2020}. For
-smooth losses the consequence of drift is a worse fit. For the Lasso
-\citep{tibshirani1996} the consequence is sharper, because the
-$\ell_1$ penalty sets coordinates exactly to zero: drift can lead sites to
-prune different predictors, and the damage then appears as a different
-variable list, not merely a larger residual. When the deliverable of the
-analysis is a candidate biomarker panel or a set of covariates for a safety
-model, that difference is the whole result.
+Let $E$ denote the number of local passes---here, full coordinate-descent
+(CD) epochs---each site performs between aggregation rounds. Larger $E$
+can reduce communication, but also allows local iterates to move further
+toward different site-specific optima, producing client drift
+\citep{li2020convergence,karimireddy2020}. For the Lasso
+\citep{tibshirani1996}, both local fitting and server aggregation can affect
+which coefficients are exactly zero. Consequently, objective values,
+prediction error and agreement of selected variables can respond
+differently to a change in $E$.
 
 This article studies the choice of $E$ for a synchronous federated
 coordinate-descent Lasso in which each site tunes its own penalty on a
 local validation split and the server aggregates by sample-size weight.
-Our starting point was an empirical observation that is easy to reproduce
-and easy to misread: as $E$ grows, the active set of the aggregated
-estimator shrinks and its agreement with a centralised fit deteriorates,
-which invites the conclusion that local epochs damage variable selection
-through drift. The main contribution of this article is to show that this
-reading is, in large part, wrong, and to identify what the aggregation rule
-is actually doing.
+The question is how to interpret changes in its estimated active set as
+$E$ varies. Such changes can reflect local optimisation, averaging of
+different sparse vectors, penalty selection and the numerical threshold
+used to declare a coefficient active. We examine these components through
+an orthogonal calculation and controlled computational comparisons.
 
 \paragraph{Contributions.} Our contributions are as follows.
 
 \begin{enumerate}
-\item \textbf{Local epochs are irrelevant under orthogonal designs.} That
-averaging destroys sparsity in composite problems is known: it is the
-``curse of primal averaging'' of \citet{yuan2021fco}, whose FedDualAvg
-algorithm was introduced precisely to avoid it, and it underlies the
-federated dual-averaging methods of \citet{bao2022}. What that literature
-does not settle is what the local-epoch parameter does to the resulting
-\emph{active set}. We show (Proposition~\ref{prop:orth}) that under
-orthogonal site designs the federated coordinate-descent iteration reaches
-its fixed point after a single round \emph{regardless of $E$}, that this
-fixed point is $\sum_j w_j \soft(z_j, \lambda_j)$, and that its active set
-contains that of the minimiser of the aggregated objective. Any dependence
-on $E$ in the orthogonal case is therefore exactly zero, and all observed
-$E$-dependence must come from correlation among predictors.
+\item \textbf{An exact orthogonal calculation.} Under orthogonal local
+designs, the CD iteration reaches
+$\sum_jw_j\soft(z_j,\lambda_j)$ after one round, independently of $E$
+(Proposition~\ref{prop:orth}). Except for exact cancellations, its support
+is the union of the local supports and contains the pooled Lasso support.
+This is a concrete calculation for the CD protocol, rather than a new
+discovery that averaging may enlarge sparse supports.
 
-\item \textbf{False positives accumulate with the number of sites.}
-Corollary~\ref{cor:fp} gives the statistical counterpart of the
-optimisation phenomenon: under a balanced partition of a fixed sample, the
-probability that a null coordinate enters the averaged active set is
-strictly increasing in the number of sites. Splitting data across more
-sites and averaging inflates the variable list even when the optimisation
-is working perfectly.
+\item \textbf{False positives under a fixed penalty.}
+Corollary~\ref{cor:fp} gives an explicit null-selection probability under
+independent Gaussian site statistics and a fixed common penalty. For
+balanced partitions of a fixed sample, this probability strictly increases
+with the number of sites. These qualifications are needed; the result
+does not establish the same ordering for locally tuned penalties.
 
-\item \textbf{The implied objective is the pooled Lasso, and the algorithm
-does not minimise it.} With sample-size weights the aggregated objective
-collapses exactly to the pooled Lasso objective at the weighted-average
-penalty $\bar\lambda$ (Lemma~\ref{lem:pooled}). We characterise the fixed
-point of the general iteration as an averaged-stationarity condition
-(Proposition~\ref{prop:fixed}) that does not coincide with stationarity of
-that objective, and we quantify the resulting gap empirically against
-consensus ADMM \citep{boyd2011}, which minimises the same objective
-exactly.
+\item \textbf{A common objective for comparing solvers.} Sample-size
+weights make the weighted local objective equal to the pooled Lasso
+objective at penalty $\bar\lambda$ (Lemma~\ref{lem:pooled}). The averaged
+fixed-point condition need not imply stationarity of that objective
+(Proposition~\ref{prop:fixed}). Consensus ADMM \citep{boyd2011} supplies
+an optimisation benchmark at the same penalty, separating objective
+accuracy from support recovery.
 
-\item \textbf{Selection is driven by the tuning rule at least as much as by
-the aggregation rule.} We compare a server-side thresholding retrofit
-(\textsc{FedAvg-ST}), per-round proximal aggregation (\textsc{FedAvg-P}, the
-coordinate-descent analogue of the composite fix), and consensus ADMM
-against pooled and local baselines with \emph{matched} penalty-selection
-rules. Holding the selection rule fixed changes the ranking substantially,
-and we report this rather than the more flattering comparison against
-prediction-tuned baselines.
+\item \textbf{Separating tuning from aggregation.} We compare
+server thresholding (\textsc{FedAvg-ST}), per-round proximal
+aggregation (\textsc{FedAvg-P}), and consensus ADMM with pooled and local
+baselines. Minimum-validation-error and one-standard-error variants
+expose the effect of the selection rule. A communication-budget comparison
+with federated dual averaging places the CD procedures alongside a
+method designed for composite objectives.
 
-\item \textbf{Communication is not the only budget.} Ranking schedules by
-communication rounds alone reverses once local computation is counted:
-across our designs, the large-$E$ schedules that transmit least perform the
-most total coordinate-descent work.
+\item \textbf{Communication and local work are separate costs.} We report
+both transmitted bytes and local computation, including additional
+federated training paths required for tuning. Increasing $E$ can save communication while
+increasing total local work, so the two measures answer different
+deployment questions.
 \end{enumerate}
 
 \paragraph{Related work.} The local-epoch trade-off is well studied for
-smooth objectives, where local SGD and its analyses
+smooth objectives through analyses of local SGD
 \citep{stich2019,li2020convergence} and drift corrections such as FedProx
-\citep{li2020fedprox} and SCAFFOLD \citep{karimireddy2020} are standard;
-composite and proximal federated methods have been developed more recently
+\citep{li2020fedprox} and SCAFFOLD \citep{karimireddy2020}.
+Composite and proximal federated methods address nonsmooth regularisation
 \citep{tran2021}. In the statistics literature, communication-efficient
-distributed sparse estimation has been approached through one-shot and
-surrogate-likelihood constructions \citep{lee2017,battey2018,jordan2019}
-and through distributed optimisation with exact consensus
-\citep{boyd2011,duchi2012,wang2017}. Closest to this article is the federated composite optimisation
-literature. \citet{yuan2021fco} name the ``curse of primal averaging'' and
-propose FedDualAvg, a primal--dual method that averages dual rather than
-primal states; \citet{bao2022} give fast federated dual-averaging
-algorithms with statistical recovery guarantees for composite problems
-including sparse regression. Our starting observation is theirs, and we
-claim no priority for it.
+distributed sparse estimation includes one-shot and surrogate-likelihood
+constructions \citep{lee2017,battey2018,jordan2019} and distributed
+optimisation with consensus \citep{boyd2011,duchi2012,wang2017}.
 
-What that literature is not about is variable selection as an outcome. It
-is written in the language of convergence rates and communication
-complexity for the objective, and the local-step count appears there as a
-parameter in a rate rather than as something that changes the estimated
-active set. The support-recovery literature
-\citep{zhaoyu2006,meinshausen2010}, conversely, is written for a single
-estimator fitted on pooled data. This article sits between them: we ask
-what averaging with $E$ local coordinate-descent epochs does to the
-variable list, show that in the orthogonal case the answer is
-``nothing---$E$ is irrelevant'', quantify how false positives accumulate
-with the number of sites, and demonstrate on simulated and real data that
-reported support-versus-$E$ curves are dominated by the aggregation and
-tuning rules rather than by client drift.
+Closest to this article is the federated composite optimisation
+literature. \citet{yuan2021fco} identify the ``curse of primal averaging'',
+introduce FedDualAvg, and evaluate sparse recovery using precision,
+recall, sparsity density and $F_1$. \citet{bao2022} develop faster
+dual-averaging methods and statistical recovery guarantees, and explicitly
+report support-recovery $F_1$ for sparse linear regression. Thus both the
+averaging mechanism and variable selection as an evaluation target have
+established precedents.
+
+Our contribution is narrower: an explicit calculation for local cyclic
+coordinate descent, a fixed-penalty null-selection formula, and a
+computational assessment of local epochs under stated tuning and cost
+conventions. The analysis complements established support-recovery and
+stability-selection work \citep{zhaoyu2006,meinshausen2010}; it does not
+provide a new general support-recovery guarantee. The simulation and data
+illustration examine when the behaviour of this particular protocol
+persists beyond its solvable orthogonal case.
 
 The remainder of the article is organised as follows.
 Section~\ref{sec:setup} fixes notation and states the algorithm.
 Section~\ref{sec:theory} contains the analytical results.
 Section~\ref{sec:method} introduces \textsc{FedAvg-ST} and the comparators.
 Sections~\ref{sec:sim} and~\ref{sec:results} describe and report the Monte
-Carlo study, Section~\ref{sec:realdata} an illustration on a three-site
-data set, and Section~\ref{sec:discussion} discusses limitations.
+Carlo study, Section~\ref{sec:budget} compares fixed training budgets, Sections~\ref{sec:realdata} and~\ref{sec:publicdata} present synthetic and public-data illustrations, and
+Section~\ref{sec:discussion} discusses limitations.

@@ -1,0 +1,45 @@
+\section{Public diabetes-data illustration}
+\label{sec:publicdata}
+
+The publicly distributed diabetes regression data contain $442$ patients
+and ten baseline predictors: age, sex, body mass index, blood pressure,
+and six serum measurements. The response measures disease progression
+one year after baseline \citep{efron2004}. We use the unscaled data bundled
+with scikit-learn \citep{pedregosa2011}, accessed with
+\texttt{load\_diabetes(scaled=False)}. The archived CSV, source links,
+package version and checksum accompany the code.
+This is a low-dimensional observational-data illustration, separate from
+the high-dimensional generated-data experiments.
+
+For each of $100$ random splits, we assign $260$ observations to training,
+$80$ to validation and $102$ to testing. Training site sizes are
+$(130,78,52)$ and validation site sizes are $(40,24,16)$; these are
+simulated partitions, not separate clinical institutions.
+Split $r=0,\ldots,99$ uses the permutation from NumPy's
+\texttt{default\_rng(20260911+r)}; all row assignments are archived.
+Predictor means and standard deviations and the response mean are fitted
+using training observations only. They define a common feature scale and
+intercept for all methods, including the largest-site fits; no test
+observations enter preprocessing, fitting or tuning. The common
+transformation can be obtained from site-level counts and sums.
+
+Local penalties and the threshold grids follow
+Section~\ref{sec:method}, with $E\in\{1,3,20\}$.
+Pooled and largest-site fits use both minimum-MSE and one-standard-error
+tuning. ADMM uses $\bar\lambda$.
+Support agreement is measured against the pooled one-standard-error fit
+within the same split, not an assumed true support. A separate descriptive
+stability measure averages pairwise Jaccard overlap between a method's
+selected sets over the $\binom{100}{2}$ pairs of splits. Larger overlap
+does not establish that a selected variable is relevant.
+The test MSE is on the original response scale. Its reported standard
+deviation describes variation across splits of the same observations;
+it is not an independent-sample standard error. Averaging methods stop at
+an update norm below $10^{-5}$ or at $500$ rounds. Any returned capped
+iterates are retained and flagged; validation also retains every candidate
+threshold. ADMM is allowed up to $20{,}000$ iterations and must meet its
+residual criterion.
+
+\input{tables/diabetes_results}
+
+\input{tables/diabetes_result_text}

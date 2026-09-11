@@ -6,11 +6,9 @@ with warm starts and a fixed number of full passes (epochs) per round.
 """
 import warnings
 import numpy as np
+from scipy.linalg import cho_solve
 from sklearn.linear_model import Lasso, lasso_path
 from sklearn.exceptions import ConvergenceWarning
-
-warnings.filterwarnings("ignore", category=ConvergenceWarning)
-
 
 def soft(x, t):
     return np.sign(x) * np.maximum(np.abs(x) - t, 0.0)
@@ -22,18 +20,49 @@ def local_epochs(X, y, beta0, lam, E):
               tol=0.0, selection="cyclic")
     m.coef_ = np.asarray(beta0, dtype=float).copy()
     m.n_iter_ = 0
-    m.fit(X, y)
+    # Fixed-budget local epochs intentionally need not solve the local problem.
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", ConvergenceWarning)
+        m.fit(X, y)
     return m.coef_.copy()
 
 
-def local_solve(X, y, lam, beta0=None, max_iter=10000, tol=1e-10):
+def local_solve(X, y, lam, beta0=None, max_iter=10000, tol=1e-10,
+                max_total_iter=200000, return_diagnostics=False):
+    """Solve a final local/pooled fit, extending the budget until the gap passes.
+
+    tol is relative to mean(y**2), as in scikit-learn's returned dual gap.
+    Numerical failures raise rather than silently entering the simulation data.
+    Fixed-budget federated local epochs use local_epochs, not this function.
+    """
     m = Lasso(alpha=lam, fit_intercept=False, warm_start=beta0 is not None,
               max_iter=max_iter, tol=tol, selection="cyclic")
     if beta0 is not None:
         m.coef_ = np.asarray(beta0, dtype=float).copy()
         m.n_iter_ = 0
-    m.fit(X, y)
-    return m.coef_.copy()
+    total = attempts = 0
+    target = tol * float(np.mean(np.asarray(y) ** 2))
+    while True:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", ConvergenceWarning)
+            m.fit(X, y)
+        total += int(m.n_iter_)
+        attempts += 1
+        gap = float(m.dual_gap_)
+        converged = bool(np.isfinite(gap) and gap <= target)
+        if converged:
+            break
+        if total >= max_total_iter or not np.isfinite(gap):
+            raise RuntimeError(f"Final Lasso did not converge: gap={gap:g}, "
+                               f"target={target:g}, iterations={total}")
+        m.warm_start = True
+        m.max_iter = min(max(4 * m.max_iter, 1), max_total_iter - total)
+    result = m.coef_.copy()
+    if return_diagnostics:
+        return result, dict(fit_converged=converged, local_dual_gap=gap,
+                            local_dual_gap_tolerance=target,
+                            solver_iterations=total, solver_restarts=attempts-1)
+    return result
 
 
 def lam_grid(X, y, n_lam=30, eps=1e-3):
@@ -61,15 +90,17 @@ def objective(sites, beta, w, lams):
 
 
 def fedavg(sites, w, lams, E, p, tol=1e-5, max_rounds=500, tau=None,
-           val=None, tau_grid=None):
+           val=None, tau_grid=None, return_diagnostics=False):
     """Synchronous federated CD-Lasso.
 
     tau is None            -> plain weighted averaging (FedAvg).
     tau is a float / 'auto'-> server applies a soft-threshold after each
-                              aggregation (FedAvg-ST).  With 'auto', tau is
+                              aggregation (FedAvg-P). With 'auto', tau is
                               chosen once, after the first round, by federated
                               validation (only scalar losses leave a site).
     """
+    if E < 1 or max_rounds < 1 or tol <= 0:
+        raise ValueError("E, max_rounds and tol must be positive")
     beta = np.zeros(p)
     hist = []
     chosen_tau = None if tau == "auto" else tau
@@ -92,12 +123,22 @@ def fedavg(sites, w, lams, E, p, tol=1e-5, max_rounds=500, tau=None,
         hist.append(objective(sites, beta, w, lams))
         if delta < tol:
             break
-    return beta, t + 1, hist, chosen_tau
+    result = (beta, t + 1, hist, chosen_tau)
+    if return_diagnostics:
+        return (*result, dict(fit_converged=bool(np.isfinite(delta) and delta < tol),
+                              final_update_norm=float(delta), fit_tolerance=tol,
+                              hit_round_cap=bool(t + 1 == max_rounds and delta >= tol)))
+    return result
 
 
 def consensus_admm(sites, w, lam_bar, p, rho=1.0, max_iter=500, tol=1e-8,
-                   warm=None, return_state=False):
-    """Global consensus ADMM: exact minimiser of sum_j w_j L_j(b) + lam_bar||b||_1."""
+                   warm=None, return_state=False, return_diagnostics=False):
+    """Consensus ADMM for the pooled objective, to the recorded residual tolerance.
+
+    The stopping rule uses ||r||_2 and rho*||z_new-z||_2, each below
+    tol*sqrt(p), preserving the original study's numerical stopping convention.
+    The latter is the consensus dual residual divided by sqrt(K).
+    """
     facs = []
     for (X, y), wj in zip(sites, w):
         m = len(y)
@@ -115,8 +156,7 @@ def consensus_admm(sites, w, lam_bar, p, rho=1.0, max_iter=500, tol=1e-8,
     for it in range(max_iter):
         for j, (L, b) in enumerate(facs):
             rhs = b + rho * (z - u[j])
-            v = np.linalg.solve(L, rhs)
-            x[j] = np.linalg.solve(L.T, v)
+            x[j] = cho_solve((L, True), rhs, check_finite=False)
         xbar = np.mean(x, axis=0)
         ubar = np.mean(u, axis=0)
         z_new = soft(xbar + ubar, lam_bar / (rho * K))
@@ -127,31 +167,55 @@ def consensus_admm(sites, w, lam_bar, p, rho=1.0, max_iter=500, tol=1e-8,
         r = np.sqrt(sum(np.sum((xj - z) ** 2) for xj in x))
         if r < tol * np.sqrt(p) and s < tol * np.sqrt(p):
             break
-    if return_state:
-        return z, it + 1, (x, u, z)
-    return z, it + 1
+    result = (z, it + 1, (x, u, z)) if return_state else (z, it + 1)
+    if return_diagnostics:
+        grad = sum(wj * X.T @ (X @ z - y) / len(y)
+                   for (X, y), wj in zip(sites, w))
+        violation = np.where(z != 0, np.abs(grad + lam_bar * np.sign(z)),
+                             np.maximum(np.abs(grad) - lam_bar, 0.0))
+        diag = dict(fit_converged=bool(r < tol * np.sqrt(p) and s < tol * np.sqrt(p)),
+                    primal_residual=float(r), dual_residual_scaled=float(s),
+                    kkt_residual=float(np.max(violation)), fit_tolerance=tol,
+                    hit_round_cap=bool(it + 1 == max_iter and
+                                       not (r < tol * np.sqrt(p) and s < tol * np.sqrt(p))))
+        return (*result, diag)
+    return result
+
+
+def validation_summaries(coefs, val, w):
+    """Weighted MSE and pooled observation-level SE from site scalar summaries.
+
+    Each site emits (sum squared residuals, sum fourth powers, count) per
+    candidate; no observation-level residual arrays are pooled. The SE is the
+    conventional one-SE tuning heuristic, not a clustered or heterogeneity-
+    robust uncertainty estimate. Validation sizes must be proportional to w.
+    """
+    coefs = np.asarray(coefs)
+    if coefs.ndim == 1:
+        coefs = coefs[:, None]
+    counts = np.array([len(y) for _, y in val], dtype=float)
+    if not np.allclose(w, counts / counts.sum()):
+        raise ValueError("Pooled one-SE heuristic requires validation proportions equal to w")
+    sums, fourths = [], []
+    for Xv, yv in val:
+        r2 = (yv[:, None] - Xv @ coefs) ** 2
+        sums.append(r2.sum(axis=0))
+        fourths.append((r2 ** 2).sum(axis=0))
+    sums, fourths = np.array(sums), np.array(fourths)
+    n = counts.sum()
+    mse = np.sum(np.asarray(w)[:, None] * sums / counts[:, None], axis=0)
+    variance = (fourths.sum(axis=0) - sums.sum(axis=0) ** 2 / n) / (n * (n - 1))
+    return mse, np.sqrt(np.maximum(variance, 0.0))
 
 
 def select_threshold(bar, val, w, tau_grid, rule="1se"):
     """Choose a server-side soft-threshold by federated validation.
 
-    Each site returns only two scalars per candidate (sum and sum of squares of
-    its validation residuals), so no row-level data leave the site.
+    Each site returns three scalars per candidate (sum squared residuals,
+    sum fourth powers, count), so no row-level data leave the site.
     """
-    n = sum(len(yv) for _, yv in val)
-    mse, se = [], []
-    for tg in tau_grid:
-        cand = soft(bar, tg)
-        s1 = s2 = 0.0
-        for (Xv, yv), wj in zip(val, w):
-            r2 = (yv - Xv @ cand) ** 2
-            s1 += wj * r2.sum() / len(yv) * len(yv)
-            s2 += (r2 ** 2).sum()
-        m = sum(wj * np.mean((yv - Xv @ cand) ** 2) for (Xv, yv), wj in zip(val, w))
-        allr2 = np.concatenate([(yv - Xv @ cand) ** 2 for Xv, yv in val])
-        mse.append(m)
-        se.append(allr2.std(ddof=1) / np.sqrt(n))
-    mse, se = np.array(mse), np.array(se)
+    candidates = soft(np.asarray(bar)[:, None], np.asarray(tau_grid)[None, :])
+    mse, se = validation_summaries(candidates, val, w)
     k = int(np.argmin(mse))
     if rule == "min":
         return tau_grid[k], mse, se
@@ -206,16 +270,9 @@ def consensus_path_exact(Xp, yp, grid):
 
 def select_by_val(coefs, val, w, rule="min"):
     """Pick a column of `coefs` by weighted validation MSE (min or 1-SE)."""
-    allr2 = []
-    mse = np.zeros(coefs.shape[1])
-    for (Xv, yv), wj in zip(val, w):
-        r2 = (yv[:, None] - Xv @ coefs) ** 2
-        mse += wj * r2.mean(axis=0)
-        allr2.append(r2)
-    allr2 = np.vstack(allr2)
+    mse, se = validation_summaries(coefs, val, w)
     k = int(np.argmin(mse))
     if rule == "min":
         return k
-    se = allr2[:, k].std(ddof=1) / np.sqrt(allr2.shape[0])
-    ok = np.where(mse <= mse[k] + se)[0]
+    ok = np.where(mse <= mse[k] + se[k])[0]
     return int(ok.min())            # grids are ordered large -> small penalty

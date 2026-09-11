@@ -7,3 +7,13 @@
 *_cache/
 .DS_Store
 Thumbs.db
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+ms/build/
+*.fls
+*.fdb_latexmk
+*.bbl
+*.blg
+*.tmp
